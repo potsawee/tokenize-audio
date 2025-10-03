@@ -28,6 +28,7 @@ import librosa
 import numpy as np
 import requests
 import torch
+from huggingface_hub import HfApi, hf_hub_download
 from transformers import MimiModel, AutoFeatureExtractor
 from tqdm import tqdm
 
@@ -55,6 +56,72 @@ def setup_logging(shard_id: str = None):
 
 # Initialize with default logger (will be reconfigured in main())
 logger = logging.getLogger(__name__)
+
+
+class HuggingFaceUploader:
+    """Handle uploading processed files to HuggingFace and managing local storage."""
+    
+    def __init__(self, repo_id: str, enabled: bool = True):
+        self.repo_id = repo_id
+        self.enabled = enabled
+        if self.enabled:
+            self.api = HfApi()
+            logger.info(f"HuggingFace uploader initialized for repo: {repo_id}")
+        else:
+            logger.info("HuggingFace uploader disabled")
+    
+    def file_exists_on_hf(self, path_in_repo: str) -> bool:
+        """Check if a file already exists on HuggingFace."""
+        if not self.enabled:
+            return False
+        
+        try:
+            # Use file_exists API method
+            return self.api.file_exists(
+                repo_id=self.repo_id,
+                filename=path_in_repo,
+                repo_type="dataset",
+            )
+        except Exception as e:
+            logger.debug(f"Error checking if {path_in_repo} exists on HF: {e}")
+            return False
+    
+    def upload_and_delete(self, local_path: Path, path_in_repo: str) -> bool:
+        """
+        Upload a file to HuggingFace and delete the local copy.
+        
+        Args:
+            local_path: Path to local file
+            path_in_repo: Path within the HF repo (e.g., "en000/00000000.json")
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self.enabled:
+            logger.info(f"Upload disabled, keeping local file: {local_path}")
+            return True
+        
+        try:
+            logger.info(f"Uploading {local_path} to HF repo {self.repo_id} as {path_in_repo}")
+            
+            self.api.upload_file(
+                path_or_fileobj=str(local_path),
+                path_in_repo=path_in_repo,
+                repo_id=self.repo_id,
+                repo_type="dataset",
+            )
+            
+            logger.info(f"Successfully uploaded {path_in_repo}")
+            
+            # Delete local file to save space
+            if local_path.exists():
+                local_path.unlink()
+                logger.info(f"Deleted local file: {local_path}")
+            
+            return True
+        except Exception as e:
+            logger.error(f"Failed to upload {local_path} to HF: {e}")
+            return False
 
 
 class MimiEncoder:
@@ -159,20 +226,24 @@ class SubShardProcessor:
         work_dir: Path,
         output_dir: Path,
         encoder: MimiEncoder,
+        hf_uploader: Optional[HuggingFaceUploader] = None,
         num_workers: int = 1,
         batch_size: int = 32,
         save_every: int = 64,
-        base_url: str = "https://huggingface.co/datasets/espnet/yodas2/raw/main/data"
+        base_url: str = "https://huggingface.co/datasets/espnet/yodas2/raw/main/data",
+        max_chunk_duration: float = 60.0
     ):
         self.shard_id = shard_id
         self.subshard_id = subshard_id
         self.work_dir = work_dir
         self.output_dir = output_dir
         self.encoder = encoder
+        self.hf_uploader = hf_uploader
         self.num_workers = num_workers
         self.batch_size = batch_size
         self.save_every = save_every
         self.base_url = base_url
+        self.max_chunk_duration = max_chunk_duration
         
         self.audio_url = f"{base_url}/{shard_id}/audio/{subshard_id}.tar.gz".replace("raw", "resolve") + "?download=true"
         self.text_url = f"{base_url}/{shard_id}/text/{subshard_id}.json"
@@ -258,9 +329,10 @@ class SubShardProcessor:
             logger.error(f"Failed to load audio file {audio_path}: {e}")
             return entry
         
-        # Collect all chunks first
+        # Collect all chunks first - split long chunks into sub-chunks
         all_chunks = []
         all_chunk_ids = []
+        long_chunks_split = 0
         
         for chunk_id, text in text_dict.items():
             # Parse chunk_id: {audio_id}-{index:05d}-{start_cs:08d}-{end_cs:08d}
@@ -291,35 +363,103 @@ class SubShardProcessor:
             end_sample = int(end_cs * sample_rate / 100)
             audio_segment = audio_array[start_sample:end_sample]
             
-            if len(audio_segment) > 0:
-                pass
-            else:
+            if len(audio_segment) == 0:
                 # some video seems shorter than what the trascript is available for
                 # "Yg-Y2--S7q8" is 18min, but the transcript is available for 31.7min
                 continue
 
-            all_chunks.append(audio_segment)
-            all_chunk_ids.append(chunk_id)
+            # Check duration - if too long, mark for separate processing
+            duration_seconds = len(audio_segment) / sample_rate
+            if duration_seconds > self.max_chunk_duration:
+                logger.warning(f"Chunk {chunk_id} is {duration_seconds:.2f}s (exceeds max={self.max_chunk_duration}s), will split and process separately")
+                long_chunks_split += 1
+                # Mark with special flag for separate processing
+                all_chunks.append(("LONG_CHUNK", audio_segment))
+                all_chunk_ids.append(chunk_id)
+            else:
+                all_chunks.append(audio_segment)
+                all_chunk_ids.append(chunk_id)
+        
+        if long_chunks_split > 0:
+            logger.info(f"Found {long_chunks_split} long chunks for {audio_id} that will be split and processed separately")
         
         # Encode in batches with proper padding and masking
         codes_dict = {}
         num_chunks = len(all_chunks)
         
-        for i in tqdm(range(0, num_chunks, self.batch_size), 
-                      desc=f"Batch encoding {audio_id}", 
-                      leave=False):
-            batch_chunks = all_chunks[i:i+self.batch_size]
-            batch_ids = all_chunk_ids[i:i+self.batch_size]
+        i = 0
+        while i < num_chunks:
+            # Check if current chunk is a long chunk that needs splitting
+            current_chunk = all_chunks[i]
+            current_id = all_chunk_ids[i]
             
-            # Encode batch with proper padding and masking (NO TRUNCATION)
-            batch_codes = self.encoder.encode_audio_batch(batch_chunks, sample_rate=sample_rate)
-            
-            # Store results
-            for chunk_id, codes in zip(batch_ids, batch_codes):
-                # Convert to uint16 for efficient storage (codes are in range [0, 2047])
-                # This uses 2 bytes per code instead of 4 or 8 bytes
-                codes_uint16 = codes.astype(np.uint16)
-                codes_dict[chunk_id] = codes_uint16.tolist()
+            if isinstance(current_chunk, tuple) and current_chunk[0] == "LONG_CHUNK":
+                # Process long chunk separately by splitting it
+                audio_segment = current_chunk[1]
+                duration_seconds = len(audio_segment) / sample_rate
+                
+                logger.info(f"Processing long chunk {current_id} ({duration_seconds:.2f}s) by splitting into sub-chunks")
+                
+                # Split into sub-chunks
+                max_samples = int(self.max_chunk_duration * sample_rate)
+                sub_chunks = []
+                for start_idx in range(0, len(audio_segment), max_samples):
+                    end_idx = min(start_idx + max_samples, len(audio_segment))
+                    sub_chunks.append(audio_segment[start_idx:end_idx])
+                
+                logger.info(f"Split into {len(sub_chunks)} sub-chunks")
+                
+                # Encode each sub-chunk individually and concatenate
+                sub_codes = []
+                for j, sub_chunk in enumerate(sub_chunks):
+                    sub_duration = len(sub_chunk) / sample_rate
+                    logger.debug(f"Encoding sub-chunk {j+1}/{len(sub_chunks)} (duration={sub_duration:.2f}s)")
+                    codes = self.encoder.encode_audio_chunk(sub_chunk, sample_rate=sample_rate)
+                    sub_codes.append(codes)
+                
+                # Concatenate along time dimension (axis 1)
+                concatenated_codes = np.concatenate(sub_codes, axis=1)
+                codes_uint16 = concatenated_codes.astype(np.uint16)
+                codes_dict[current_id] = codes_uint16.tolist()
+                
+                # Clean up GPU memory after processing long chunk (safety measure for rare edge case)
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                
+                logger.info(f"Completed long chunk {current_id}, final shape: {concatenated_codes.shape}")
+                i += 1
+            else:
+                # Process normal batch
+                batch_end = min(i + self.batch_size, num_chunks)
+                batch_chunks = []
+                batch_ids = []
+                
+                # Collect batch, stopping if we hit a long chunk
+                for j in range(i, batch_end):
+                    chunk = all_chunks[j]
+                    if isinstance(chunk, tuple) and chunk[0] == "LONG_CHUNK":
+                        # Stop batch here, will process long chunk in next iteration
+                        break
+                    batch_chunks.append(chunk)
+                    batch_ids.append(all_chunk_ids[j])
+                
+                if batch_chunks:
+                    # Log batch info for debugging
+                    batch_lengths = [len(chunk) / sample_rate for chunk in batch_chunks]
+                    max_length = max(batch_lengths)
+                    logger.debug(f"Batch: {len(batch_chunks)} chunks, max_duration={max_length:.2f}s")
+                    
+                    # Encode batch with proper padding and masking (NO TRUNCATION)
+                    batch_codes = self.encoder.encode_audio_batch(batch_chunks, sample_rate=sample_rate)
+                    
+                    # Store results
+                    for chunk_id, codes in zip(batch_ids, batch_codes):
+                        # Convert to uint16 for efficient storage (codes are in range [0, 2047])
+                        # This uses 2 bytes per code instead of 4 or 8 bytes
+                        codes_uint16 = codes.astype(np.uint16)
+                        codes_dict[chunk_id] = codes_uint16.tolist()
+                
+                i += len(batch_chunks)
         
         # Add codes to entry
         entry["codes"] = codes_dict
@@ -328,6 +468,16 @@ class SubShardProcessor:
     def get_output_path(self) -> Path:
         """Get the output path for this sub-shard."""
         return self.output_dir / self.shard_id / f"{self.subshard_id}.json"
+    
+    def get_hf_path(self) -> str:
+        """Get the path in HF repo for this sub-shard."""
+        return f"{self.shard_id}/{self.subshard_id}.json"
+    
+    def is_already_on_hf(self) -> bool:
+        """Check if this sub-shard is already uploaded to HuggingFace."""
+        if not self.hf_uploader or not self.hf_uploader.enabled:
+            return False
+        return self.hf_uploader.file_exists_on_hf(self.get_hf_path())
     
     def load_existing_output(self) -> Optional[Dict[str, Dict]]:
         """Load existing partial output if it exists."""
@@ -354,6 +504,11 @@ class SubShardProcessor:
     def process(self) -> bool:
         """Process the entire sub-shard with resumability and parallel workers."""
         logger.info(f"Processing sub-shard {self.shard_id}/{self.subshard_id} with {self.num_workers} workers, batch_size={self.batch_size}")
+        
+        # Step 0: Check if already uploaded to HuggingFace (for resumability)
+        if self.is_already_on_hf():
+            logger.info(f"Sub-shard {self.subshard_id} already exists on HuggingFace, skipping")
+            return True
         
         # Check if extraction directory already exists (from previous interrupted run)
         audio_already_extracted = self.audio_extract_dir.exists()
@@ -447,7 +602,16 @@ class SubShardProcessor:
         logger.info(f"Saving final results for {self.subshard_id}")
         self.save_incremental_output(processed_metadata)
         
-        # Step 7: Cleanup
+        # Step 7: Upload to HuggingFace and delete local file
+        if self.hf_uploader and self.hf_uploader.enabled:
+            output_path = self.get_output_path()
+            hf_path = self.get_hf_path()
+            success = self.hf_uploader.upload_and_delete(output_path, hf_path)
+            if not success:
+                logger.error(f"Failed to upload {self.subshard_id} to HuggingFace")
+                return False
+        
+        # Step 8: Cleanup temporary files
         self.cleanup()
         
         return True
@@ -476,6 +640,8 @@ class ShardProcessor:
         num_workers: int = 1,
         batch_size: int = 32,
         save_every: int = 64,
+        hf_repo_id: Optional[str] = None,
+        max_chunk_duration: float = 60.0,
     ):
         self.shard_id = shard_id
         self.work_dir = work_dir / shard_id
@@ -485,6 +651,7 @@ class ShardProcessor:
         self.num_workers = num_workers
         self.batch_size = batch_size
         self.save_every = save_every
+        self.max_chunk_duration = max_chunk_duration
         
         self.work_dir.mkdir(parents=True, exist_ok=True)
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -492,6 +659,12 @@ class ShardProcessor:
         
         # Initialize encoder once for the entire shard
         self.encoder = MimiEncoder(device=device)
+        
+        # Initialize HuggingFace uploader if repo_id is provided
+        if hf_repo_id:
+            self.hf_uploader = HuggingFaceUploader(repo_id=hf_repo_id, enabled=True)
+        else:
+            self.hf_uploader = None
         
         # Load or initialize progress
         self.progress = self.load_progress()
@@ -565,9 +738,11 @@ class ShardProcessor:
                 work_dir=self.work_dir,
                 output_dir=self.output_dir,
                 encoder=self.encoder,
+                hf_uploader=self.hf_uploader,
                 num_workers=self.num_workers,
                 batch_size=self.batch_size,
                 save_every=self.save_every,
+                max_chunk_duration=self.max_chunk_duration,
             )
             
             success = processor.process()
@@ -597,6 +772,8 @@ def main():
     parser.add_argument("--num-workers", type=int, default=4, help="Number of parallel workers for processing audio files (default: 4)")
     parser.add_argument("--batch-size", type=int, default=32, help="Batch size for encoding chunks (default: 32)")
     parser.add_argument("--save-every", type=int, default=64, help="Save progress every N audio files (default: 64)")
+    parser.add_argument("--hf-repo-id", type=str, default=None, help="HuggingFace dataset repo ID for automatic upload (e.g., potsawee/yodas2-mm)")
+    parser.add_argument("--max-chunk-duration", type=float, default=60.0, help="Maximum duration of a chunk in seconds to prevent OOM (default: 60.0)")
     
     args = parser.parse_args()
     
@@ -613,11 +790,13 @@ def main():
         num_workers=args.num_workers,
         batch_size=args.batch_size,
         save_every=args.save_every,
+        hf_repo_id=args.hf_repo_id,
+        max_chunk_duration=args.max_chunk_duration,
     )
     
     processor.process()
 
-    # usage: python process_shard.py --shard-id en000 --work-dir ./work --output-dir ./output --progress-dir ./progress --device cuda --num-workers 1 --batch-size 12 --save-every 48
+    # usage: python process_shard.py --shard-id en000 --work-dir ./work --output-dir ./output --progress-dir ./progress --device cuda --num-workers 1 --batch-size 16 --save-every 48 --hf-repo-id potsawee/yodas2-mm
 
 if __name__ == "__main__":
     main()
