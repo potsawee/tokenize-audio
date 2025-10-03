@@ -32,14 +32,28 @@ from transformers import MimiModel, AutoFeatureExtractor
 from tqdm import tqdm
 
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler('process_shard.log')
-    ]
-)
+def setup_logging(shard_id: str = None):
+    """Setup logging with shard-specific log file to avoid conflicts."""
+    log_dir = Path("logs")
+    log_dir.mkdir(exist_ok=True)
+    
+    if shard_id:
+        log_file = log_dir / f"process_{shard_id}.log"
+    else:
+        log_file = log_dir / "process_shard.log"
+    
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.StreamHandler(sys.stdout),
+            logging.FileHandler(log_file)
+        ],
+        force=True  # Override any existing config
+    )
+    return logging.getLogger(__name__)
+
+# Initialize with default logger (will be reconfigured in main())
 logger = logging.getLogger(__name__)
 
 
@@ -79,6 +93,60 @@ class MimiEncoder:
             )
             audio_codes = encoder_outputs.audio_codes
             return audio_codes.cpu().numpy()[0]  # Remove batch dimension
+    
+    def encode_audio_batch(self, audio_arrays: List[np.ndarray], sample_rate: int = 24000) -> List[np.ndarray]:
+        """
+        Encode multiple audio chunks in a batch with proper padding and masking.
+        NO TRUNCATION - all audio is preserved with padding, then trimmed to actual lengths.
+        
+        Args:
+            audio_arrays: List of audio data arrays (variable lengths)
+            sample_rate: Sample rate (default 24000)
+            
+        Returns:
+            List of audio codes as numpy arrays, one per input (trimmed to actual lengths)
+        """
+        if len(audio_arrays) == 0:
+            return []
+        
+        if len(audio_arrays) == 1:
+            return [self.encode_audio_chunk(audio_arrays[0], sample_rate)]
+        
+        with torch.no_grad():
+            # Track original lengths to trim padding later
+            original_lengths = [len(audio) for audio in audio_arrays]
+            
+            # Use feature extractor with padding=True
+            # This will pad shorter sequences to match the longest in the batch
+            # and create appropriate padding masks
+            inputs = self.feature_extractor(
+                raw_audio=audio_arrays,
+                sampling_rate=sample_rate,
+                return_tensors="pt",
+                padding=True  # Pad to longest sequence and create padding_mask
+            )
+            
+            # Move to device
+            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+            
+            # Encode with padding mask (feature extractor creates it automatically)
+            encoder_outputs = self.model.encode(
+                input_values=inputs["input_values"],
+                padding_mask=inputs["padding_mask"]
+            )
+            audio_codes = encoder_outputs.audio_codes  # [batch_size, num_codebooks, max_frames]
+            
+            # Trim each result to its actual length (remove padding)
+            # The model's frame rate is typically 12.5 Hz for Mimi (24000 / 12.5)
+            frame_rate = sample_rate / 12.5  # Mimi uses 12.5 hop length
+            results = []
+            for i, orig_length in enumerate(original_lengths):
+                # Calculate actual number of frames for this audio
+                actual_frames = int(np.ceil(orig_length / frame_rate))
+                # Trim the codes to actual length
+                trimmed_codes = audio_codes[i, :, :actual_frames].cpu().numpy()
+                results.append(trimmed_codes)
+            return results
 
 
 class SubShardProcessor:
@@ -92,6 +160,7 @@ class SubShardProcessor:
         output_dir: Path,
         encoder: MimiEncoder,
         num_workers: int = 1,
+        batch_size: int = 32,
         save_every: int = 64,
         base_url: str = "https://huggingface.co/datasets/espnet/yodas2/raw/main/data"
     ):
@@ -101,6 +170,7 @@ class SubShardProcessor:
         self.output_dir = output_dir
         self.encoder = encoder
         self.num_workers = num_workers
+        self.batch_size = batch_size
         self.save_every = save_every
         self.base_url = base_url
         
@@ -167,7 +237,7 @@ class SubShardProcessor:
 
     
     def process_audio_entry(self, entry: Dict, sample_rate: int = 24000) -> Dict:
-        """Process a single audio entry (one audio file with multiple chunks)."""
+        """Process a single audio entry (one audio file with multiple chunks) WITH BATCHING."""
         audio_id = entry["audio_id"]
         text_dict = entry["text"]
         
@@ -178,7 +248,7 @@ class SubShardProcessor:
             return entry
         
         audio_path = audio_files[0]
-        logger.info(f"Processing {audio_id} with {len(text_dict)} chunks")
+        logger.info(f"Processing {audio_id} with {len(text_dict)} chunks (batch_size={self.batch_size})")
         
         # Load the entire audio file once
         try:
@@ -188,9 +258,11 @@ class SubShardProcessor:
             logger.error(f"Failed to load audio file {audio_path}: {e}")
             return entry
         
-        # Process each chunk by slicing the loaded audio
-        codes_dict = {}
-        for chunk_id, text in tqdm(text_dict.items(), desc=f"Encoding {audio_id}", leave=False):
+        # Collect all chunks first
+        all_chunks = []
+        all_chunk_ids = []
+        
+        for chunk_id, text in text_dict.items():
             # Parse chunk_id: {audio_id}-{index:05d}-{start_cs:08d}-{end_cs:08d}
             # Note: timestamps are in centiseconds (10ms units), NOT milliseconds
             # Use rsplit to split from right, since audio_id may contain hyphens
@@ -203,22 +275,51 @@ class SubShardProcessor:
             # parts[3] = end_cs (8 digits, in centiseconds)
             start_cs = int(parts[2])
             end_cs = int(parts[3])
-            assert start_cs < end_cs, f"Invalid chunk_id format: {chunk_id}"
-            
+
+            if start_cs < end_cs:
+                pass
+            elif start_cs == end_cs:
+                # there are broken segments like (same start and end):
+                # Y65x5_9PNO8-00026-00003279-00003279 in en000-00000000
+                continue
+            else:
+                raise ValueError(f"Invalid chunk_id format: {chunk_id}")
+
             # Extract audio segment by slicing the array
             # Convert centiseconds to samples (1 centisecond = 10ms = sample_rate/100 samples)
             start_sample = int(start_cs * sample_rate / 100)
             end_sample = int(end_cs * sample_rate / 100)
             audio_segment = audio_array[start_sample:end_sample]
             
-            assert len(audio_segment) > 0, f"Empty audio segment for {chunk_id}"
+            if len(audio_segment) > 0:
+                pass
+            else:
+                # some video seems shorter than what the trascript is available for
+                # "Yg-Y2--S7q8" is 18min, but the transcript is available for 31.7min
+                continue
+
+            all_chunks.append(audio_segment)
+            all_chunk_ids.append(chunk_id)
+        
+        # Encode in batches with proper padding and masking
+        codes_dict = {}
+        num_chunks = len(all_chunks)
+        
+        for i in tqdm(range(0, num_chunks, self.batch_size), 
+                      desc=f"Batch encoding {audio_id}", 
+                      leave=False):
+            batch_chunks = all_chunks[i:i+self.batch_size]
+            batch_ids = all_chunk_ids[i:i+self.batch_size]
             
-            # Encode with Mimi
-            codes = self.encoder.encode_audio_chunk(audio_segment, sample_rate=sample_rate)
-            # Convert to uint16 for efficient storage (codes are in range [0, 2047])
-            # This uses 2 bytes per code instead of 4 or 8 bytes
-            codes_uint16 = codes.astype(np.uint16)
-            codes_dict[chunk_id] = codes_uint16.tolist()
+            # Encode batch with proper padding and masking (NO TRUNCATION)
+            batch_codes = self.encoder.encode_audio_batch(batch_chunks, sample_rate=sample_rate)
+            
+            # Store results
+            for chunk_id, codes in zip(batch_ids, batch_codes):
+                # Convert to uint16 for efficient storage (codes are in range [0, 2047])
+                # This uses 2 bytes per code instead of 4 or 8 bytes
+                codes_uint16 = codes.astype(np.uint16)
+                codes_dict[chunk_id] = codes_uint16.tolist()
         
         # Add codes to entry
         entry["codes"] = codes_dict
@@ -252,7 +353,7 @@ class SubShardProcessor:
     
     def process(self) -> bool:
         """Process the entire sub-shard with resumability and parallel workers."""
-        logger.info(f"Processing sub-shard {self.shard_id}/{self.subshard_id} with {self.num_workers} workers")
+        logger.info(f"Processing sub-shard {self.shard_id}/{self.subshard_id} with {self.num_workers} workers, batch_size={self.batch_size}")
         
         # Check if extraction directory already exists (from previous interrupted run)
         audio_already_extracted = self.audio_extract_dir.exists()
@@ -324,25 +425,15 @@ class SubShardProcessor:
                     
                     # Store results with their original index
                     results = {}
-                    failed_audio_ids = []
                     
                     # Process completed tasks as they finish
                     with tqdm(total=len(entries_to_process), desc=f"Processing {self.subshard_id}") as pbar:
                         for future in as_completed(future_to_index):
                             idx, entry = future_to_index[future]
-                            try:
-                                processed_entry = future.result()
-                                results[idx] = processed_entry
-                                
-                                pbar.update(1)
-                            except Exception as e:
-                                logger.error(f"Failed to process {entry['audio_id']}: {e}")
-                                # Mark entry as failed but keep it
-                                entry_with_error = entry.copy()
-                                entry_with_error["processing_error"] = str(e)
-                                results[idx] = entry_with_error
-                                failed_audio_ids.append(entry['audio_id'])
-                                pbar.update(1)
+                            # Don't catch exceptions - let them crash for debugging
+                            processed_entry = future.result()  # Will raise if processing failed
+                            results[idx] = processed_entry
+                            pbar.update(1)
                     
                     # Add results in original order
                     for idx in sorted(results.keys()):
@@ -351,10 +442,6 @@ class SubShardProcessor:
                         # Save every N audio files
                         if len(processed_metadata) % self.save_every == 0:
                             self.save_incremental_output(processed_metadata)
-                    
-                    # Log summary of failures
-                    if failed_audio_ids:
-                        logger.warning(f"Failed to process {len(failed_audio_ids)} audio files: {failed_audio_ids}")
         
         # Step 6: Final save
         logger.info(f"Saving final results for {self.subshard_id}")
@@ -387,7 +474,8 @@ class ShardProcessor:
         progress_dir: Path,
         device: str = "cuda",
         num_workers: int = 1,
-        save_every: int = 64
+        batch_size: int = 32,
+        save_every: int = 64,
     ):
         self.shard_id = shard_id
         self.work_dir = work_dir / shard_id
@@ -395,6 +483,7 @@ class ShardProcessor:
         self.progress_dir = progress_dir
         self.progress_file = progress_dir / f"{shard_id}_progress.json"
         self.num_workers = num_workers
+        self.batch_size = batch_size
         self.save_every = save_every
         
         self.work_dir.mkdir(parents=True, exist_ok=True)
@@ -449,6 +538,7 @@ class ShardProcessor:
         logger.info(f"Starting processing of shard {self.shard_id}")
         logger.info(f"Work directory: {self.work_dir}")
         logger.info(f"Output directory: {self.output_dir}")
+        logger.info(f"Batch size: {self.batch_size}")
         
         # Get list of sub-shards
         all_subshards = self.get_subshard_list()
@@ -476,7 +566,8 @@ class ShardProcessor:
                 output_dir=self.output_dir,
                 encoder=self.encoder,
                 num_workers=self.num_workers,
-                save_every=self.save_every
+                batch_size=self.batch_size,
+                save_every=self.save_every,
             )
             
             success = processor.process()
@@ -497,16 +588,21 @@ class ShardProcessor:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Process a Yodas2 shard with Mimi encoding")
+    parser = argparse.ArgumentParser(description="Process a Yodas2 shard with Mimi encoding (with batching)")
     parser.add_argument("--shard-id", type=str, required=True, help="Shard ID (e.g., en000)")
     parser.add_argument("--work-dir", type=str, default="./work", help="Working directory for temporary files")
     parser.add_argument("--output-dir", type=str, default="./output", help="Output directory for processed files")
     parser.add_argument("--progress-dir", type=str, default="./progress", help="Directory for progress tracking")
     parser.add_argument("--device", type=str, default="cuda", help="Device for Mimi model (cuda or cpu)")
     parser.add_argument("--num-workers", type=int, default=4, help="Number of parallel workers for processing audio files (default: 4)")
+    parser.add_argument("--batch-size", type=int, default=32, help="Batch size for encoding chunks (default: 32)")
     parser.add_argument("--save-every", type=int, default=64, help="Save progress every N audio files (default: 64)")
     
     args = parser.parse_args()
+    
+    # Setup logging with shard-specific log file
+    global logger
+    logger = setup_logging(args.shard_id)
     
     processor = ShardProcessor(
         shard_id=args.shard_id,
@@ -515,12 +611,13 @@ def main():
         progress_dir=Path(args.progress_dir),
         device=args.device,
         num_workers=args.num_workers,
-        save_every=args.save_every
+        batch_size=args.batch_size,
+        save_every=args.save_every,
     )
     
     processor.process()
 
-    # usage: python process_shard.py --shard-id en000 --work-dir ./work --output-dir ./output --progress-dir ./progress --device cuda --num-workers 16 --save-every 64
+    # usage: python process_shard.py --shard-id en000 --work-dir ./work --output-dir ./output --progress-dir ./progress --device cuda --num-workers 1 --batch-size 12 --save-every 48
 
 if __name__ == "__main__":
     main()
