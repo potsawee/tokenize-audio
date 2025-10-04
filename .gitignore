@@ -1,0 +1,40 @@
+# Yodas2-Mimi processing directories
+yodas2-mimi/work/
+yodas2-mimi/output/
+yodas2-mimi/progress/
+yodas2-mimi/logs/
+yodas2-mimi/legacy/
+yodas2-mimi/submit/job_en006.sh
+yodas2-mimi/submit/sc_loprior_gpu.sh
+yodas2-mimi/submit_jobs.txt
+
+examples/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
