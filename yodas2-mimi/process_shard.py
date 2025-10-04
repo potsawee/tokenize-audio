@@ -35,7 +35,7 @@ from tqdm import tqdm
 
 def setup_logging(shard_id: str = None):
     """Setup logging with shard-specific log file to avoid conflicts."""
-    log_dir = Path("logs")
+    log_dir = Path("/sphinx/u/salt-checkpoints/yodas2-mm/logs")
     log_dir.mkdir(exist_ok=True)
     
     if shard_id:
@@ -341,12 +341,17 @@ class SubShardProcessor:
         return False
     
     def extract_audio_tar(self) -> bool:
-        """Extract audio tar.gz file."""
+        """Extract audio tar.gz file and create completion marker."""
         try:
             logger.info(f"Extracting {self.audio_tar_path}")
             self.audio_extract_dir.mkdir(parents=True, exist_ok=True)
             with tarfile.open(self.audio_tar_path, 'r:gz') as tar:
                 tar.extractall(path=self.audio_extract_dir)
+            
+            # Create marker file to indicate successful extraction
+            extraction_marker = self.audio_extract_dir / ".extraction_complete"
+            extraction_marker.touch()
+            
             logger.info(f"Extracted to {self.audio_extract_dir}")
             return True
         except Exception as e:
@@ -567,16 +572,58 @@ class SubShardProcessor:
         """Process the entire sub-shard with resumability and parallel workers."""
         logger.info(f"Processing sub-shard {self.shard_id}/{self.subshard_id} with {self.num_workers} workers, batch_size={self.batch_size}")
         
-        # Check if extraction directory already exists (from previous interrupted run)
-        audio_already_extracted = self.audio_extract_dir.exists()
+        # Check if extraction is complete (not just if directory exists)
+        extraction_marker = self.audio_extract_dir / ".extraction_complete"
+        audio_already_extracted = extraction_marker.exists()
         
         if not audio_already_extracted:
-            # Step 1: Download audio tar.gz
-            if not self.download_file(self.audio_url, self.audio_tar_path):
-                return False
+            # Clean up incomplete extraction if directory exists
+            if self.audio_extract_dir.exists():
+                logger.warning(f"Found incomplete extraction at {self.audio_extract_dir}, cleaning up")
+                shutil.rmtree(self.audio_extract_dir)
             
-            # Step 2: Extract audio
-            if not self.extract_audio_tar():
+            # Step 1 & 2: Download and extract with retry logic (for corrupted downloads)
+            max_retries = 3
+            extraction_success = False
+            
+            for attempt in range(1, max_retries + 1):
+                # Step 1: Download audio tar.gz (or reuse if already downloaded)
+                if not self.audio_tar_path.exists():
+                    logger.info(f"Downloading tar.gz (attempt {attempt}/{max_retries})")
+                    if not self.download_file(self.audio_url, self.audio_tar_path):
+                        logger.error(f"Download failed on attempt {attempt}/{max_retries}")
+                        if attempt < max_retries:
+                            time.sleep(2 ** attempt)  # Exponential backoff
+                            continue
+                        else:
+                            return False
+                else:
+                    if attempt == 1:
+                        logger.info(f"Audio tar.gz already downloaded at {self.audio_tar_path}, reusing")
+                    else:
+                        logger.info(f"Retry {attempt}/{max_retries}: Re-downloaded tar.gz")
+                
+                # Step 2: Extract audio
+                if self.extract_audio_tar():
+                    extraction_success = True
+                    break
+                else:
+                    # Extraction failed - delete corrupted tar.gz and retry
+                    logger.warning(f"Extraction failed on attempt {attempt}/{max_retries}, deleting potentially corrupted tar.gz")
+                    if self.audio_tar_path.exists():
+                        self.audio_tar_path.unlink()
+                    # Also clean up any partial extraction
+                    if self.audio_extract_dir.exists():
+                        shutil.rmtree(self.audio_extract_dir)
+                    
+                    if attempt < max_retries:
+                        logger.info(f"Will retry download and extraction...")
+                        time.sleep(2)  # Brief pause before retry
+                    else:
+                        logger.error(f"Extraction failed after {max_retries} attempts, giving up")
+                        return False
+            
+            if not extraction_success:
                 return False
             
             # Step 2a: Delete tar.gz immediately to save disk space
@@ -1011,9 +1058,22 @@ class ShardProcessor:
             logger.info(f"Uploading remaining {len(self.pending_uploads)} sub-shards")
             self.batch_upload_pending(force=True)
         
-        logger.info(f"Completed processing shard {self.shard_id}")
-        logger.info(f"Successfully processed: {len(self.progress['completed_subshards'])} sub-shards")
-        logger.info(f"Failed: {len(self.progress['failed_subshards'])} sub-shards")
+        # Print final summary
+        logger.info("=" * 80)
+        logger.info(f"COMPLETED PROCESSING SHARD {self.shard_id}")
+        logger.info("=" * 80)
+        logger.info(f"✓ Successfully processed and uploaded: {len(self.progress['completed_subshards'])} sub-shards")
+        
+        if self.progress['failed_subshards']:
+            failed_count = len(self.progress['failed_subshards'])
+            logger.warning(f"✗ Failed to process (after max retries): {failed_count} sub-shards")
+            logger.warning(f"  Failed sub-shard IDs: {', '.join(self.progress['failed_subshards'])}")
+            logger.warning(f"  These sub-shards will be retried when you restart this job")
+            logger.warning(f"  Common causes: corrupted source files, network issues, or OOM errors")
+        else:
+            logger.info("✓ All available sub-shards processed successfully!")
+        
+        logger.info("=" * 80)
 
 
 def main():
