@@ -28,7 +28,7 @@ import librosa
 import numpy as np
 import requests
 import torch
-from huggingface_hub import HfApi, hf_hub_download
+from huggingface_hub import HfApi, CommitOperationAdd
 from transformers import MimiModel, AutoFeatureExtractor
 from tqdm import tqdm
 
@@ -121,6 +121,64 @@ class HuggingFaceUploader:
             return True
         except Exception as e:
             logger.error(f"Failed to upload {local_path} to HF: {e}")
+            return False
+    
+    def upload_folder_and_delete(self, file_paths: List[Tuple[Path, str]]) -> bool:
+        """
+        Upload multiple files to HuggingFace in a SINGLE commit and delete local copies.
+        This avoids rate limits by batching all uploads into one commit.
+        
+        Args:
+            file_paths: List of tuples (local_path, path_in_repo)
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self.enabled:
+            logger.info(f"Upload disabled, keeping {len(file_paths)} local files")
+            return True
+        
+        if not file_paths:
+            return True
+        
+        try:
+            logger.info(f"Batch uploading {len(file_paths)} files to HF repo {self.repo_id} in a SINGLE commit")
+            
+            # Create commit operations for all files
+            operations = []
+            for local_path, path_in_repo in file_paths:
+                if local_path.exists():
+                    operations.append(
+                        CommitOperationAdd(
+                            path_in_repo=path_in_repo,
+                            path_or_fileobj=str(local_path)
+                        )
+                    )
+            
+            if operations:
+                # Create a single commit with all files
+                commit_message = f"Upload {len(operations)} processed sub-shards"
+                
+                self.api.create_commit(
+                    repo_id=self.repo_id,
+                    repo_type="dataset",
+                    operations=operations,
+                    commit_message=commit_message,
+                )
+                
+                logger.info(f"Successfully uploaded {len(operations)} files in 1 commit")
+                
+                # Delete local files after successful upload
+                for local_path, _ in file_paths:
+                    if local_path.exists():
+                        local_path.unlink()
+                        logger.debug(f"Deleted local file: {local_path}")
+                
+                logger.info(f"Deleted {len(file_paths)} local files to save space")
+            
+            return True
+        except Exception as e:
+            logger.error(f"Failed to batch upload files to HF: {e}")
             return False
 
 
@@ -461,8 +519,12 @@ class SubShardProcessor:
                 
                 i += len(batch_chunks)
         
-        # Add codes to entry
+        # Add codes to entry (may be empty if all chunks were filtered out)
         entry["codes"] = codes_dict
+        
+        if not codes_dict:
+            logger.warning(f"Audio {audio_id} has 0 valid chunks after filtering (all chunks were empty/invalid)")
+        
         return entry
     
     def get_output_path(self) -> Path:
@@ -505,11 +567,6 @@ class SubShardProcessor:
         """Process the entire sub-shard with resumability and parallel workers."""
         logger.info(f"Processing sub-shard {self.shard_id}/{self.subshard_id} with {self.num_workers} workers, batch_size={self.batch_size}")
         
-        # Step 0: Check if already uploaded to HuggingFace (for resumability)
-        if self.is_already_on_hf():
-            logger.info(f"Sub-shard {self.subshard_id} already exists on HuggingFace, skipping")
-            return True
-        
         # Check if extraction directory already exists (from previous interrupted run)
         audio_already_extracted = self.audio_extract_dir.exists()
         
@@ -540,10 +597,24 @@ class SubShardProcessor:
         
         # Step 4: Load existing partial output (if resuming)
         existing_output = self.load_existing_output()
-        completed_audio_ids = set(existing_output.keys()) if existing_output else set()
+        # Only consider entries that have "codes" field as completed (even if empty)
+        # Empty codes dict means the entry was processed but had no valid chunks
+        if existing_output:
+            completed_audio_ids = set(
+                audio_id for audio_id, entry in existing_output.items()
+                if "codes" in entry  # Has been processed (codes may be empty if no valid chunks)
+            )
+        else:
+            completed_audio_ids = set()
         
         if completed_audio_ids:
             logger.info(f"Resuming: {len(completed_audio_ids)} audio files already processed")
+        
+        # Count incomplete entries that will be reprocessed
+        if existing_output:
+            incomplete_count = len(existing_output) - len(completed_audio_ids)
+            if incomplete_count > 0:
+                logger.info(f"Found {incomplete_count} incomplete entries that will be reprocessed")
         
         # Step 5: Process each audio entry (with parallel workers)
         # Separate already-completed entries from entries to process
@@ -602,16 +673,7 @@ class SubShardProcessor:
         logger.info(f"Saving final results for {self.subshard_id}")
         self.save_incremental_output(processed_metadata)
         
-        # Step 7: Upload to HuggingFace and delete local file
-        if self.hf_uploader and self.hf_uploader.enabled:
-            output_path = self.get_output_path()
-            hf_path = self.get_hf_path()
-            success = self.hf_uploader.upload_and_delete(output_path, hf_path)
-            if not success:
-                logger.error(f"Failed to upload {self.subshard_id} to HuggingFace")
-                return False
-        
-        # Step 8: Cleanup temporary files
+        # Step 7: Cleanup temporary files (audio files only, keep output JSON for batch upload)
         self.cleanup()
         
         return True
@@ -642,6 +704,7 @@ class ShardProcessor:
         save_every: int = 64,
         hf_repo_id: Optional[str] = None,
         max_chunk_duration: float = 60.0,
+        upload_batch_size: int = 10,
     ):
         self.shard_id = shard_id
         self.work_dir = work_dir / shard_id
@@ -652,6 +715,7 @@ class ShardProcessor:
         self.batch_size = batch_size
         self.save_every = save_every
         self.max_chunk_duration = max_chunk_duration
+        self.upload_batch_size = upload_batch_size
         
         self.work_dir.mkdir(parents=True, exist_ok=True)
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -666,8 +730,140 @@ class ShardProcessor:
         else:
             self.hf_uploader = None
         
+        # Track pending uploads (sub-shards that have been processed but not uploaded yet)
+        self.pending_uploads = []
+        
         # Load or initialize progress
         self.progress = self.load_progress()
+        
+        # Scan for existing complete local files that need uploading
+        if self.hf_uploader and self.hf_uploader.enabled:
+            self.scan_and_queue_local_files()
+    
+    def is_json_complete(self, json_path: Path) -> bool:
+        """
+        Check if a JSON file is complete (all entries have been processed).
+        
+        An entry is considered processed if it has a "codes" field, even if empty.
+        Empty codes dict means all chunks were filtered out as invalid.
+        
+        Args:
+            json_path: Path to the JSON file
+            
+        Returns:
+            True if complete, False otherwise
+        """
+        try:
+            with open(json_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            if not isinstance(data, list) or len(data) == 0:
+                return False
+            
+            # Check if all entries have the "codes" field (even if empty)
+            # An empty codes dict means the entry was processed but had no valid chunks
+            for entry in data:
+                if not isinstance(entry, dict):
+                    return False
+                if "codes" not in entry:
+                    return False
+                # Note: We allow empty codes dict - it means processed but no valid chunks
+            
+            return True
+        except Exception as e:
+            logger.warning(f"Failed to validate {json_path}: {e}")
+            return False
+    
+    def cleanup_work_files_for_subshard(self, subshard_id: str):
+        """
+        Clean up work directory files for a completed sub-shard.
+        
+        Args:
+            subshard_id: The sub-shard ID (e.g., "00000000")
+        """
+        # Clean up audio extraction directory
+        audio_extract_dir = self.work_dir / f"{subshard_id}_audio"
+        if audio_extract_dir.exists():
+            shutil.rmtree(audio_extract_dir)
+            logger.debug(f"Cleaned up work audio dir: {audio_extract_dir}")
+        
+        # Clean up downloaded tar.gz
+        audio_tar_path = self.work_dir / f"{subshard_id}.tar.gz"
+        if audio_tar_path.exists():
+            audio_tar_path.unlink()
+            logger.debug(f"Cleaned up work tar.gz: {audio_tar_path}")
+        
+        # Clean up text json
+        text_json_path = self.work_dir / f"{subshard_id}.json"
+        if text_json_path.exists():
+            text_json_path.unlink()
+            logger.debug(f"Cleaned up work json: {text_json_path}")
+    
+    def scan_and_queue_local_files(self):
+        """
+        Scan for existing complete local output files that haven't been uploaded to HF yet.
+        Only complete files (with all codes) will be queued for upload.
+        Also cleans up work directory files for completed sub-shards.
+        """
+        shard_output_dir = self.output_dir / self.shard_id
+        if not shard_output_dir.exists():
+            return
+        
+        # Find all .json files in the shard output directory
+        local_files = sorted(shard_output_dir.glob("*.json"))
+        
+        if not local_files:
+            return
+        
+        logger.info(f"Scanning {len(local_files)} local output files for pending uploads")
+        
+        complete_count = 0
+        queued_count = 0
+        cleaned_count = 0
+        
+        # Check each file
+        for local_file in local_files:
+            subshard_id = local_file.stem  # e.g., "00000000" from "00000000.json"
+            
+            # First check if it's complete
+            if not self.is_json_complete(local_file):
+                logger.warning(f"Skipping incomplete file: {subshard_id} ({local_file})")
+                continue
+            
+            complete_count += 1
+            logger.info(f"Found complete local file: {subshard_id}")
+            
+            # Clean up work directory files for this complete sub-shard
+            self.cleanup_work_files_for_subshard(subshard_id)
+            cleaned_count += 1
+            
+            # Check if already on HF
+            hf_path = f"{self.shard_id}/{subshard_id}.json"
+            if self.hf_uploader.file_exists_on_hf(hf_path):
+                logger.info(f"File {subshard_id} already on HF, skipping upload")
+                continue
+            
+            # File is complete and not on HF - queue it for upload
+            if subshard_id not in self.pending_uploads:
+                self.pending_uploads.append(subshard_id)
+                queued_count += 1
+                logger.info(f"Queued {subshard_id} for upload (pending: {len(self.pending_uploads)})")
+                
+                # Add to completed list if not already there
+                if subshard_id not in self.progress["completed_subshards"]:
+                    self.progress["completed_subshards"].append(subshard_id)
+        
+        if cleaned_count > 0:
+            logger.info(f"Cleaned up work files for {cleaned_count} completed sub-shards")
+        
+        if queued_count > 0:
+            logger.info(f"Found {complete_count} complete local files, queued {queued_count} for upload")
+            # Save progress with updated completed list
+            self.save_progress()
+            # Try to upload them in batches
+            self.batch_upload_pending(force=False)
+        else:
+            logger.info(f"Found {complete_count} complete local files, all already uploaded")
     
     def load_progress(self) -> Dict:
         """Load processing progress."""
@@ -706,6 +902,54 @@ class ShardProcessor:
         except:
             return False
     
+    def is_subshard_completed(self, subshard_id: str) -> bool:
+        """Check if a sub-shard is already completed (either locally or on HF)."""
+        # Check if in completed list
+        if subshard_id in self.progress["completed_subshards"]:
+            # Verify it actually exists on HF
+            if self.hf_uploader and self.hf_uploader.enabled:
+                hf_path = f"{self.shard_id}/{subshard_id}.json"
+                if self.hf_uploader.file_exists_on_hf(hf_path):
+                    return True
+            # Or exists locally AND is complete (has all codes)
+            local_path = self.output_dir / self.shard_id / f"{subshard_id}.json"
+            if local_path.exists() and self.is_json_complete(local_path):
+                return True
+        return False
+    
+    def batch_upload_pending(self, force=False):
+        """Upload pending sub-shards to HF and delete local files."""
+        if not self.hf_uploader or not self.hf_uploader.enabled:
+            logger.debug(f"Skipping upload: HF uploader not enabled (pending: {len(self.pending_uploads)})")
+            return
+        
+        if not self.pending_uploads:
+            logger.debug("Skipping upload: No pending uploads")
+            return
+        
+        logger.debug(f"Checking batch upload: {len(self.pending_uploads)} pending, threshold: {self.upload_batch_size}, force: {force}")
+        
+        # Upload if we have enough pending or if forced (end of shard)
+        if len(self.pending_uploads) >= self.upload_batch_size or force:
+            logger.info(f"Batch uploading {len(self.pending_uploads)} sub-shards to HuggingFace")
+            
+            # Prepare file paths for batch upload
+            file_paths = []
+            for subshard_id in self.pending_uploads:
+                local_path = self.output_dir / self.shard_id / f"{subshard_id}.json"
+                hf_path = f"{self.shard_id}/{subshard_id}.json"
+                if local_path.exists():
+                    file_paths.append((local_path, hf_path))
+            
+            # Batch upload
+            success = self.hf_uploader.upload_folder_and_delete(file_paths)
+            
+            if success:
+                logger.info(f"Successfully uploaded and deleted {len(file_paths)} files")
+                self.pending_uploads.clear()
+            else:
+                logger.error("Batch upload failed, keeping files for retry")
+    
     def process(self):
         """Process the entire shard."""
         logger.info(f"Starting processing of shard {self.shard_id}")
@@ -721,11 +965,12 @@ class ShardProcessor:
         logger.info(f"Already completed: {len(completed)}")
 
         for subshard_id in all_subshards:
-            if subshard_id in completed:
+            # Check if already completed (either on HF or locally)
+            if self.is_subshard_completed(subshard_id):
                 logger.info(f"Skipping already completed sub-shard {subshard_id}")
                 continue
             
-            # Check if sub-shard exists
+            # Check if sub-shard exists on source
             if not self.is_subshard_available(subshard_id):
                 logger.info(f"Sub-shard {subshard_id} not available, stopping enumeration")
                 break
@@ -749,13 +994,22 @@ class ShardProcessor:
             
             if success:
                 self.progress["completed_subshards"].append(subshard_id)
-                logger.info(f"Successfully completed sub-shard {subshard_id}")
+                self.pending_uploads.append(subshard_id)
+                logger.info(f"Successfully completed sub-shard {subshard_id} (pending uploads: {len(self.pending_uploads)}/{self.upload_batch_size})")
+                
+                # Batch upload every N sub-shards
+                self.batch_upload_pending(force=False)
             else:
                 self.progress["failed_subshards"].append(subshard_id)
                 logger.error(f"Failed to process sub-shard {subshard_id}")
             
             # Save progress after each sub-shard
             self.save_progress()
+        
+        # Final batch upload for any remaining sub-shards
+        if self.pending_uploads:
+            logger.info(f"Uploading remaining {len(self.pending_uploads)} sub-shards")
+            self.batch_upload_pending(force=True)
         
         logger.info(f"Completed processing shard {self.shard_id}")
         logger.info(f"Successfully processed: {len(self.progress['completed_subshards'])} sub-shards")
@@ -774,6 +1028,7 @@ def main():
     parser.add_argument("--save-every", type=int, default=64, help="Save progress every N audio files (default: 64)")
     parser.add_argument("--hf-repo-id", type=str, default=None, help="HuggingFace dataset repo ID for automatic upload (e.g., potsawee/yodas2-mm)")
     parser.add_argument("--max-chunk-duration", type=float, default=60.0, help="Maximum duration of a chunk in seconds to prevent OOM (default: 60.0)")
+    parser.add_argument("--upload-batch-size", type=int, default=10, help="Number of sub-shards to batch together for HF upload to avoid rate limits (default: 10)")
     
     args = parser.parse_args()
     
@@ -792,6 +1047,7 @@ def main():
         save_every=args.save_every,
         hf_repo_id=args.hf_repo_id,
         max_chunk_duration=args.max_chunk_duration,
+        upload_batch_size=args.upload_batch_size,
     )
     
     processor.process()
