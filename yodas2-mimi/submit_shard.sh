@@ -18,7 +18,7 @@ if [ -z "$SHARD_ID" ]; then
 fi
 
 # Set log directory
-LOG_DIR="/nlp/scr/potsawee/workspace/tokenize-audio/yodas2-mimi/logs"
+LOG_DIR="/sphinx/u/salt-checkpoints/yodas2-mm/logs"
 LOG_FILE="${LOG_DIR}/${SHARD_ID}.log"
 
 # Submit job with dynamic parameters

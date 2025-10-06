@@ -7,6 +7,10 @@ yodas2-mimi/legacy/
 yodas2-mimi/submit/job_en006.sh
 yodas2-mimi/submit/sc_loprior_gpu.sh
 yodas2-mimi/submit_jobs.txt
+yodas2-mimi/yodas2-mm
+yodas2-mimi/*.log
+yodas2-mimi/*.json
+
 
 examples/
 

@@ -9,9 +9,11 @@
 #SBATCH --mem=20G                        # from: -r 20G
 #SBATCH --gres=gpu:1                     # from: -g 1
 #SBATCH --open-mode=append
-#SBATCH --output=/nlp/scr/potsawee/workspace/tokenize-audio/yodas2-mimi/logs/default.log
-#SBATCH --error=/nlp/scr/potsawee/workspace/tokenize-audio/yodas2-mimi/logs/default.log
+#SBATCH --output=/sphinx/u/salt-checkpoints/yodas2-mm/logs/default.log
+#SBATCH --error=/sphinx/u/salt-checkpoints/yodas2-mm/logs/default.log
+# Note: These defaults are overridden by submit_shard.sh with shard-specific log files
 #SBATCH --constraint=[40G|48G|80G]
+#SBATCH --exclude=tiger-hgx-1
 
 set -euo pipefail
 
@@ -83,4 +85,4 @@ echo "Processing shard: ${SHARD_ID}"
 # --- launch ---
 # Use srun so Slurm binds resources correctly; torchrun spawns 4 local processes.
 srun --unbuffered bash -lc \
-"export HF_TOKEN=<YOUR_HF_TOKEN> && python process_shard.py --shard-id ${SHARD_ID} --work-dir ./work --output-dir ./output --progress-dir ./progress --device cuda --num-workers 1 --batch-size 16 --save-every 48 --hf-repo-id potsawee/yodas2-mm"
+"export HF_TOKEN=<YOUR_HF_TOKEN> && python process_shard.py --shard-id ${SHARD_ID} --work-dir /sphinx/u/salt-checkpoints/yodas2-mm/work --output-dir /sphinx/u/salt-checkpoints/yodas2-mm/output --progress-dir /sphinx/u/salt-checkpoints/yodas2-mm/progress --device cuda --num-workers 1 --batch-size 16 --save-every 48 --hf-repo-id potsawee/yodas2-mm"
