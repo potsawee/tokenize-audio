@@ -752,6 +752,7 @@ class ShardProcessor:
         hf_repo_id: Optional[str] = None,
         max_chunk_duration: float = 60.0,
         upload_batch_size: int = 10,
+        max_consecutive_missing: int = 5,
     ):
         self.shard_id = shard_id
         self.work_dir = work_dir / shard_id
@@ -763,6 +764,7 @@ class ShardProcessor:
         self.save_every = save_every
         self.max_chunk_duration = max_chunk_duration
         self.upload_batch_size = upload_batch_size
+        self.max_consecutive_missing = max_consecutive_missing
         
         self.work_dir.mkdir(parents=True, exist_ok=True)
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -939,15 +941,48 @@ class ShardProcessor:
         # You may need to adjust this range based on the actual data
         return [f"{i:08d}" for i in range(1000)]  # Adjust as needed
     
-    def is_subshard_available(self, subshard_id: str) -> bool:
-        """Check if a sub-shard exists on HuggingFace."""
+    def is_subshard_available(self, subshard_id: str, max_retries: int = 3) -> bool:
+        """
+        Check if a sub-shard exists on HuggingFace with retry logic.
+        
+        Args:
+            subshard_id: Sub-shard ID to check
+            max_retries: Maximum number of retry attempts
+            
+        Returns:
+            True if available, False if confirmed not available
+        """
         base_url = "https://huggingface.co/datasets/espnet/yodas2/raw/main/data"
         audio_url = f"{base_url}/{self.shard_id}/audio/{subshard_id}.tar.gz"
-        try:
-            response = requests.head(audio_url, timeout=10)
-            return response.status_code == 200
-        except:
-            return False
+        
+        for attempt in range(max_retries):
+            try:
+                response = requests.head(audio_url, timeout=10)
+                if response.status_code == 200:
+                    return True
+                elif response.status_code == 404:
+                    # Confirmed not found
+                    return False
+                else:
+                    # Other status codes - retry
+                    logger.warning(f"Availability check for {subshard_id} returned status {response.status_code} (attempt {attempt + 1}/{max_retries})")
+                    if attempt < max_retries - 1:
+                        time.sleep(2 ** attempt)
+            except requests.exceptions.Timeout:
+                logger.warning(f"Timeout checking availability of {subshard_id} (attempt {attempt + 1}/{max_retries})")
+                if attempt < max_retries - 1:
+                    time.sleep(2 ** attempt)
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"Network error checking availability of {subshard_id}: {e} (attempt {attempt + 1}/{max_retries})")
+                if attempt < max_retries - 1:
+                    time.sleep(2 ** attempt)
+            except Exception as e:
+                logger.error(f"Unexpected error checking availability of {subshard_id}: {e}")
+                return False
+        
+        # After all retries failed, assume not available
+        logger.warning(f"Could not confirm availability of {subshard_id} after {max_retries} attempts, assuming not available")
+        return False
     
     def is_subshard_completed(self, subshard_id: str) -> bool:
         """Check if a sub-shard is already completed (either locally or on HF)."""
@@ -1003,6 +1038,7 @@ class ShardProcessor:
         logger.info(f"Work directory: {self.work_dir}")
         logger.info(f"Output directory: {self.output_dir}")
         logger.info(f"Batch size: {self.batch_size}")
+        logger.info(f"Max consecutive missing: {self.max_consecutive_missing}")
         
         # Get list of sub-shards
         all_subshards = self.get_subshard_list()
@@ -1011,17 +1047,29 @@ class ShardProcessor:
         logger.info(f"Total sub-shards to check: {len(all_subshards)}")
         logger.info(f"Already completed: {len(completed)}")
 
+        consecutive_missing = 0
+        
         for subshard_id in all_subshards:
             # Check if already completed (either on HF or locally)
             if self.is_subshard_completed(subshard_id):
                 logger.info(f"Skipping already completed sub-shard {subshard_id}")
+                consecutive_missing = 0  # Reset counter on successful find
                 continue
             
-            # Check if sub-shard exists on source
+            # Check if sub-shard exists on source (with retry logic)
             if not self.is_subshard_available(subshard_id):
-                logger.info(f"Sub-shard {subshard_id} not available, stopping enumeration")
-                break
+                consecutive_missing += 1
+                logger.warning(f"Sub-shard {subshard_id} not available (consecutive missing: {consecutive_missing}/{self.max_consecutive_missing})")
+                
+                if consecutive_missing >= self.max_consecutive_missing:
+                    logger.info(f"Reached {self.max_consecutive_missing} consecutive missing sub-shards, stopping enumeration")
+                    break
+                else:
+                    logger.info(f"Continuing to check next sub-shard (allowing for gaps)")
+                    continue
             
+            # Reset consecutive missing counter when we find an available sub-shard
+            consecutive_missing = 0
             logger.info(f"Processing sub-shard {subshard_id}")
             
             processor = SubShardProcessor(
@@ -1089,6 +1137,7 @@ def main():
     parser.add_argument("--hf-repo-id", type=str, default=None, help="HuggingFace dataset repo ID for automatic upload (e.g., potsawee/yodas2-mm)")
     parser.add_argument("--max-chunk-duration", type=float, default=60.0, help="Maximum duration of a chunk in seconds to prevent OOM (default: 60.0)")
     parser.add_argument("--upload-batch-size", type=int, default=10, help="Number of sub-shards to batch together for HF upload to avoid rate limits (default: 10)")
+    parser.add_argument("--max-consecutive-missing", type=int, default=5, help="Maximum number of consecutive missing sub-shards before stopping enumeration (default: 5)")
     
     args = parser.parse_args()
     
@@ -1108,6 +1157,7 @@ def main():
         hf_repo_id=args.hf_repo_id,
         max_chunk_duration=args.max_chunk_duration,
         upload_batch_size=args.upload_batch_size,
+        max_consecutive_missing=args.max_consecutive_missing,
     )
     
     processor.process()
