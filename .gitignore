@@ -11,8 +11,17 @@ yodas2-mimi/yodas2-mm
 yodas2-mimi/*.log
 yodas2-mimi/*.json
 
-
 examples/
+
+codec-bpe/yodas2_mimi_8cb*
+codec-bpe/data
+codec-bpe/output
+codec-bpe/trained_bpe_tokenizers
+codec-bpe/logs
+codec-bpe/notebooks
+codec-bpe/sample_progress.txt
+codec-bpe/subset_subshard_ids_for_bpe*.txt
+
 
 # Python
 __pycache__/
