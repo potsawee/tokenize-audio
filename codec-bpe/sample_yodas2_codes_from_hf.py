@@ -210,7 +210,7 @@ def extract_and_save_codes(
     num_target_codebooks: int = None
 ) -> int:
     """
-    Extract codes from JSON data and save as individual .npy files.
+    Extract codes from JSON data and save all codes from a subshard into a single .npy file.
     
     Args:
         json_data: JSON data containing audio entries with codes
@@ -220,10 +220,11 @@ def extract_and_save_codes(
         num_target_codebooks: Number of codebooks to keep (default: None, keeps all)
         
     Returns:
-        Number of code files saved
+        Number of code utterances saved
     """
     output_dir.mkdir(parents=True, exist_ok=True)
-    num_saved = 0
+    
+    all_codes = []
     
     # JSON data is a list of entries
     for entry in json_data:
@@ -243,17 +244,23 @@ def extract_and_save_codes(
             if num_target_codebooks is not None:
                 codes_array = codes_array[:num_target_codebooks, :]
             
-            # Add batch dimension to make it (1, num_codebooks, num_frames)
-            codes_array = np.expand_dims(codes_array, axis=0)
-
-            # Save as .npy file with format: {shard_id}_{subshard_id}_{chunk_id}.npy
-            filename = f"{shard_id}_{subshard_id}_{chunk_id}.npy"
-            output_path = output_dir / filename
-            
-            np.save(output_path, codes_array)
-            num_saved += 1
+            all_codes.append(codes_array)
     
-    return num_saved
+    # Save all codes from this subshard as a single .npy file
+    # Format: {shard_id}_{subshard_id}.npy
+    # The file contains an object array of code arrays, each with shape (num_codebooks, num_frames)
+    # We use dtype=object because different utterances have different lengths
+    if all_codes:
+        filename = f"{shard_id}_{subshard_id}.npy"
+        output_path = output_dir / filename
+        # Pre-allocate object array and assign elements to avoid broadcasting issues
+        all_codes_array = np.empty(len(all_codes), dtype=object)
+        for i, codes in enumerate(all_codes):
+            all_codes_array[i] = codes
+        np.save(output_path, all_codes_array)
+        logger.debug(f"Saved {len(all_codes)} utterances to {filename}")
+    
+    return len(all_codes)
 
 
 def load_progress(progress_file: Path) -> Set[Tuple[str, str]]:

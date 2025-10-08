@@ -1,0 +1,36 @@
+# Step1: load tokenized mimi codes from HF
+python sample_yodas2_codes_from_hf.py  
+    --shard-ids-file ../yodas2-mimi/shard_ids.txt \
+    --subshard-counts-file ../yodas2-mimi/subshard_counts.json \
+    --max-subshards-per-shard 5 \
+    --repo-id potsawee/yodas2-mm \
+    --output-dir ./yodas2_mimi_8cb_samples_organized \
+    --subshard-list-file ./subset_subshard_ids_for_bpe.txt \
+    --progress-file ./sample_progress.txt \
+    --seed 42 \
+    --num-target-codebooks 8
+
+# Step2: train a new BPE tokenizer (Yodas2-Mimi)
+## Step2.1: copy `bpe_trainer.py` to replace your codec_bpe package code: <path_to_your_env>/codec_bpe/core/trainer.py
+
+## Step2.2: train a new BPE tokenizer
+# 8 codebooks * 2048 = 16384
+python -m codec_bpe.train_tokenizer \
+    --codes_path yodas2_mimi_8cb_samples \
+    --chunk_size_secs 30 \
+    --vocab_size 128000 \
+    --pad_token "<pad>" \
+    --num_codebooks 8 \
+    --codebook_size 2048 \
+    --codec_framerate 12.5 \
+    --max_token_codebook_ngrams 2 \
+    --unicode_offset 0xE000 \
+    --save_path ./trained_bpe_tokenizers/mimi_bpe_8cb_128k
+
+
+# Step3: extend an existing Transformers PreTrainedTokenizer
+python -m codec_bpe.extend_tokenizer \
+    --existing_tokenizer stanford-crfm/marin-tokenizer \
+    --codec_bpe_tokenizer ./trained_bpe_tokenizers/mimi_bpe_8cb_128k \
+    --additional_special_tokens "<audio>" "</audio>" \
+    --save_path ./trained_bpe_tokenizers/marin_mimi_bpe_8cb_128k
