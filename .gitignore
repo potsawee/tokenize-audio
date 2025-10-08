@@ -22,6 +22,14 @@ codec-bpe/notebooks
 codec-bpe/sample_progress.txt
 codec-bpe/subset_subshard_ids_for_bpe*.txt
 
+pretraining-data/work/
+pretraining-data/output/
+pretraining-data/progress/
+pretraining-data/logs/
+pretraining-data/notebooks/
+pretraining-data/huggingface_hub_cache/
+
+
 
 # Python
 __pycache__/
