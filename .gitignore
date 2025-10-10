@@ -10,6 +10,7 @@ yodas2-mimi/submit_jobs.txt
 yodas2-mimi/yodas2-mm
 yodas2-mimi/*.log
 yodas2-mimi/*.json
+yodas2-mimi/testing
 
 examples/
 
@@ -21,13 +22,18 @@ codec-bpe/logs
 codec-bpe/notebooks
 codec-bpe/sample_progress.txt
 codec-bpe/subset_subshard_ids_for_bpe*.txt
+codec-bpe/legacy
+codec-bpe/saved
 
 pretraining-data/work/
 pretraining-data/output/
 pretraining-data/progress/
+pretraining-data/progress
 pretraining-data/logs/
+pretraining-data/logs_
 pretraining-data/notebooks/
 pretraining-data/huggingface_hub_cache/
+pretraining-data/stats/
 
 
 

@@ -34,3 +34,30 @@ python -m codec_bpe.extend_tokenizer \
     --codec_bpe_tokenizer ./trained_bpe_tokenizers/mimi_bpe_8cb_128k \
     --additional_special_tokens "<audio>" "</audio>" \
     --save_path ./trained_bpe_tokenizers/marin_mimi_bpe_8cb_128k
+
+
+# ------------------------------------------------------------------------------------------------
+# Build 8-codebook 16K BPE tokenizer (i.e., no merges)
+python -m codec_bpe.train_tokenizer \
+    --codes_path yodas2_mimi_8cb_samples_dummy3 \
+    --chunk_size_secs 30 \
+    --vocab_size 16384 \
+    --pad_token "<pad>" \
+    --num_codebooks 8 \
+    --codebook_size 2048 \
+    --codec_framerate 12.5 \
+    --max_token_codebook_ngrams 0 \
+    --unicode_offset 0xE000 \
+    --save_path ./trained_bpe_tokenizers/mimi_bpe_8cb_16k
+
+python -m codec_bpe.extend_tokenizer \
+    --existing_tokenizer stanford-crfm/marin-tokenizer \
+    --codec_bpe_tokenizer ./trained_bpe_tokenizers/mimi_bpe_8cb_16k \
+    --additional_special_tokens "<|text_start|>" "<|text_end|>" "<|audio_start|>" "<|audio_end|>" \
+    --save_path ./trained_bpe_tokenizers/marin_mimi_bpe_8cb_16k
+
+# upload to HF
+huggingface-cli login
+huggingface-cli upload potsawee/marin-mimi-bpe-8cb-16k-tokenizer \
+    /nlp/scr/potsawee/workspace/tokenize-audio/codec-bpe/trained_bpe_tokenizers/marin_mimi_bpe_8cb_16k \
+    --repo-type model
