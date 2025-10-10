@@ -11,8 +11,8 @@ python estimate_tokens.py \
 # If you know the total document count (faster, skips metadata lookup)
 python estimate_tokens.py \
     --repo-id potsawee/yodas2-mm-pretrain \
-    --sample-size 1000 \
-    --total-docs 5000000 \
+    --sample-size 10000 \
+    --total-docs 4258874 \
     --output-file token_stats.json
 
 # Full analysis (slow, processes every document)
