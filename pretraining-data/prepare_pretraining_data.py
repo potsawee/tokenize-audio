@@ -15,7 +15,7 @@ This script:
 
 # Example usage:
 python prepare_pretraining_data.py \
-    --shard-id en001 \
+    --shard-id en000 \
     --source-repo-id potsawee/yodas2-mm \
     --dest-repo-id potsawee/yodas2-mm-pretrain \
     --work-dir ./work \
@@ -24,9 +24,9 @@ python prepare_pretraining_data.py \
     --num-codebooks 8 \
     --codebook-size 2048 \
     --unicode-offset 0xe000 \
-    --parquet-batch-size 20000 \
+    --parquet-batch-size 10000 \
     --upload-batch-size 1 \
-    --checkpoint-interval 10
+    --checkpoint-interval 5
 
 # 20000 entries -> 2-3GB per parquet file (similar to fineweb)
 # Checkpoint saved every 10 subshards for resumability
@@ -120,7 +120,7 @@ class HuggingFaceManager:
                     filename=hf_path,
                     repo_type="dataset",
                     local_dir=dest_path.parent.parent,
-                    local_dir_use_symlinks=False,
+                    # local_dir_use_symlinks=True,
                 )
                 
                 # Check if file was downloaded
@@ -465,12 +465,76 @@ class ShardProcessor:
         # Track subshards processed since last checkpoint
         self.subshards_since_checkpoint = 0
         
-        # Load any existing checkpoint on startup
+        # Clean up any leftover temp files from previous crashed runs
+        self.cleanup_temp_files()
+        
+        # Initialize parquet counter based on existing files to avoid overwriting
+        self.initialize_parquet_counter()
+        
+        # Load any existing checkpoint on startup (may override parquet_counter)
         self.load_checkpoint()
         
         # Scan for local files that need uploading
         if enable_upload:
             self.scan_and_queue_local_files()
+    
+    def cleanup_temp_files(self):
+        """Clean up leftover temporary parquet files from previous crashed runs."""
+        shard_output_dir = self.output_dir / self.shard_id
+        if not shard_output_dir.exists():
+            return
+        
+        temp_files = list(shard_output_dir.glob(".tmp_*.parquet"))
+        if temp_files:
+            logger.info(f"Cleaning up {len(temp_files)} leftover temp files from previous runs")
+            for temp_file in temp_files:
+                try:
+                    temp_file.unlink()
+                    logger.debug(f"Deleted temp file: {temp_file.name}")
+                except Exception as e:
+                    logger.warning(f"Failed to delete temp file {temp_file.name}: {e}")
+    
+    def initialize_parquet_counter(self):
+        """
+        Initialize parquet counter from progress file and existing local files.
+        Uses the maximum of both to ensure we never reuse a parquet ID.
+        """
+        # Get counter from progress file (persists across runs even if files deleted)
+        saved_counter = self.progress.get("parquet_counter", 0)
+        
+        # Scan for existing local parquet files (safety net)
+        file_counter = 0
+        shard_output_dir = self.output_dir / self.shard_id
+        if shard_output_dir.exists():
+            existing_files = sorted(shard_output_dir.glob("*.parquet"))
+            if existing_files:
+                max_counter = -1
+                for parquet_file in existing_files:
+                    # Skip checkpoint and temp files
+                    if parquet_file.name.startswith('.checkpoint') or parquet_file.name.startswith('.tmp_'):
+                        continue
+                    
+                    # Extract counter from filename (e.g., "00000042.parquet" -> 42)
+                    try:
+                        counter = int(parquet_file.stem)
+                        max_counter = max(max_counter, counter)
+                    except ValueError:
+                        logger.warning(f"Ignoring non-standard parquet filename: {parquet_file.name}")
+                        continue
+                
+                if max_counter >= 0:
+                    file_counter = max_counter + 1
+                    logger.info(f"Found existing parquet files up to {max_counter:08d}.parquet")
+        
+        # Use the maximum to ensure we never overwrite
+        self.parquet_counter = max(saved_counter, file_counter)
+        
+        if saved_counter > 0:
+            logger.info(f"Loaded parquet counter from progress: {saved_counter}")
+        if file_counter > 0:
+            logger.info(f"Scanned local files, next counter: {file_counter}")
+        
+        logger.info(f"Starting parquet counter at: {self.parquet_counter}")
     
     def load_progress(self) -> Dict:
         """Load processing progress."""
@@ -480,16 +544,27 @@ class ShardProcessor:
         return {
             "shard_id": self.shard_id,
             "completed_subshards": [],
-            "failed_subshards": []
+            "failed_subshards": [],
+            "parquet_counter": 0
         }
     
     def save_progress(self):
         """Save processing progress."""
+        # Always save current parquet_counter to persist across runs
+        self.progress["parquet_counter"] = self.parquet_counter
         with open(self.progress_file, 'w') as f:
             json.dump(self.progress, f, indent=2)
     
     def load_checkpoint(self):
         """Load checkpoint of accumulated data from previous run if exists."""
+        # Clean up any leftover temporary checkpoint files from previous crashed runs
+        for temp_file in self.work_dir.glob(".checkpoint_tmp_*.parquet"):
+            temp_file.unlink()
+            logger.debug(f"Cleaned up leftover temp checkpoint: {temp_file}")
+        for temp_file in self.work_dir.glob(".checkpoint_meta_tmp_*.json"):
+            temp_file.unlink()
+            logger.debug(f"Cleaned up leftover temp metadata: {temp_file}")
+        
         if self.checkpoint_file.exists() and self.checkpoint_meta_file.exists():
             try:
                 logger.info(f"Found checkpoint file, loading accumulated data...")
@@ -502,12 +577,25 @@ class ShardProcessor:
                 with open(self.checkpoint_meta_file, 'r') as f:
                     meta = json.load(f)
                     self.current_batch_subshards = meta.get('subshards', [])
-                    self.parquet_counter = meta.get('parquet_counter', 0)
+                    checkpoint_counter = meta.get('parquet_counter', 0)
+                    # Use the max to avoid overwriting existing files
+                    self.parquet_counter = max(self.parquet_counter, checkpoint_counter)
                 
                 logger.info(f"Loaded checkpoint: {len(self.accumulated_data)} entries from {len(self.current_batch_subshards)} subshards")
                 logger.info(f"Continuing from parquet counter: {self.parquet_counter}")
             except Exception as e:
-                logger.warning(f"Failed to load checkpoint: {e}, starting fresh")
+                logger.warning(f"Failed to load checkpoint (possibly corrupted): {e}")
+                logger.info("Cleaning up corrupted checkpoint and starting fresh")
+                
+                # Clean up corrupted checkpoint files
+                if self.checkpoint_file.exists():
+                    self.checkpoint_file.unlink()
+                    logger.info(f"Deleted corrupted checkpoint: {self.checkpoint_file}")
+                if self.checkpoint_meta_file.exists():
+                    self.checkpoint_meta_file.unlink()
+                    logger.info(f"Deleted corrupted metadata: {self.checkpoint_meta_file}")
+                
+                # Start fresh
                 self.accumulated_data = []
                 self.current_batch_subshards = []
                 self.parquet_counter = 0
@@ -515,7 +603,7 @@ class ShardProcessor:
             logger.info("No checkpoint found, starting fresh")
     
     def save_checkpoint(self):
-        """Save current accumulated data as checkpoint for resumability."""
+        """Save current accumulated data as checkpoint for resumability (atomic write)."""
         if not self.accumulated_data:
             # No data to checkpoint, clean up any existing checkpoint
             if self.checkpoint_file.exists():
@@ -525,22 +613,35 @@ class ShardProcessor:
             return
         
         try:
-            # Save the accumulated data
-            df = pd.DataFrame(self.accumulated_data)
-            df.to_parquet(self.checkpoint_file, engine='pyarrow', compression='snappy', index=False)
+            # Use temporary files for atomic writes (prevents corruption on preemption)
+            temp_checkpoint = self.work_dir / f".checkpoint_tmp_{os.getpid()}.parquet"
+            temp_meta = self.work_dir / f".checkpoint_meta_tmp_{os.getpid()}.json"
             
-            # Save metadata
+            # Save the accumulated data to temp file
+            df = pd.DataFrame(self.accumulated_data)
+            df.to_parquet(temp_checkpoint, engine='pyarrow', compression='snappy', index=False)
+            
+            # Save metadata to temp file
             meta = {
                 'subshards': self.current_batch_subshards,
                 'parquet_counter': self.parquet_counter,
                 'entry_count': len(self.accumulated_data)
             }
-            with open(self.checkpoint_meta_file, 'w') as f:
+            with open(temp_meta, 'w') as f:
                 json.dump(meta, f, indent=2)
+            
+            # Atomic rename (this is atomic on POSIX filesystems)
+            temp_checkpoint.rename(self.checkpoint_file)
+            temp_meta.rename(self.checkpoint_meta_file)
             
             logger.debug(f"Saved checkpoint: {len(self.accumulated_data)} entries")
         except Exception as e:
             logger.warning(f"Failed to save checkpoint: {e}")
+            # Clean up temp files if they exist
+            if temp_checkpoint.exists():
+                temp_checkpoint.unlink()
+            if temp_meta.exists():
+                temp_meta.unlink()
     
     def clear_checkpoint(self):
         """Clear checkpoint files after successful parquet save."""
@@ -567,26 +668,38 @@ class ShardProcessor:
             parquet_filename = local_file.name
             hf_path = f"{self.shard_id}/{parquet_filename}"
             
-            # Check if already on destination
-            if self.hf_manager.file_exists_on_dest(hf_path):
-                logger.info(f"File {parquet_filename} already uploaded")
-                continue
-            
             # Read parquet file to determine which subshards it contains
+            subshard_ids = []
             try:
                 df = pd.read_parquet(local_file)
                 # Extract unique subshard IDs from "split" field (format: "shard_id/subshard_id")
                 unique_splits = df['split'].unique()
                 subshard_ids = [split.split('/')[1] for split in unique_splits if '/' in split]
                 logger.info(f"File {parquet_filename} contains {len(subshard_ids)} subshards: {subshard_ids}")
-                
-                # Track which subshards are in this file
-                self.parquet_to_subshards[parquet_filename] = subshard_ids
             except Exception as e:
                 logger.warning(f"Failed to read {parquet_filename} to extract subshard IDs: {e}")
-                # Queue it anyway, but won't be able to mark subshards as completed
             
-            # Queue for upload
+            # Check if already on destination
+            if self.hf_manager.file_exists_on_dest(hf_path):
+                logger.info(f"File {parquet_filename} already uploaded to HF")
+                
+                # Mark subshards as completed (handles race condition where upload succeeded but progress not saved)
+                if subshard_ids:
+                    for subshard_id in subshard_ids:
+                        if subshard_id not in self.progress["completed_subshards"]:
+                            self.progress["completed_subshards"].append(subshard_id)
+                    logger.info(f"Marked {len(subshard_ids)} subshards as completed from already-uploaded file")
+                    self.save_progress()
+                
+                # Delete local file since it's already on HF
+                local_file.unlink()
+                logger.info(f"Deleted local file {parquet_filename} (already on HF)")
+                continue
+            
+            # File not on HF yet - queue for upload
+            if subshard_ids:
+                self.parquet_to_subshards[parquet_filename] = subshard_ids
+            
             if parquet_filename not in self.pending_uploads:
                 self.pending_uploads.append(parquet_filename)
                 logger.info(f"Queued {parquet_filename} for upload")
@@ -644,11 +757,25 @@ class ShardProcessor:
         output_path = self.output_dir / self.shard_id / parquet_filename
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
-        # Convert to DataFrame and save as parquet
-        df = pd.DataFrame(data)
-        df.to_parquet(output_path, engine='pyarrow', compression='snappy', index=False)
+        # Use atomic write: write to temp file first, then rename
+        # This prevents uploading incomplete files if job is killed during write
+        temp_path = output_path.parent / f".tmp_{os.getpid()}_{parquet_filename}"
         
-        logger.info(f"Saved {len(data)} entries from {len(subshard_ids)} subshards to {parquet_filename}")
+        try:
+            # Convert to DataFrame and save as parquet to temp file
+            df = pd.DataFrame(data)
+            df.to_parquet(temp_path, engine='pyarrow', compression='snappy', index=False)
+            
+            # Atomic rename (atomic on POSIX filesystems)
+            temp_path.rename(output_path)
+            
+            logger.info(f"Saved {len(data)} entries from {len(subshard_ids)} subshards to {parquet_filename}")
+        except Exception as e:
+            # Clean up temp file if something went wrong
+            if temp_path.exists():
+                temp_path.unlink()
+            logger.error(f"Failed to save parquet file {parquet_filename}: {e}")
+            raise
         
         # Track which subshards are in this parquet file
         self.parquet_to_subshards[parquet_filename] = subshard_ids.copy()
@@ -692,14 +819,15 @@ class ShardProcessor:
                         # Clean up tracking
                         del self.parquet_to_subshards[parquet_filename]
                 
-                # Save progress after marking subshards as completed
+                # Save progress (including parquet_counter) after marking subshards as completed
                 self.save_progress()
                 
-                # Delete local files after successful upload
+                # Delete local files after successful upload to save disk space
+                # The parquet_counter is saved in progress file, so we won't reuse IDs on resume
                 for local_path, _ in file_paths:
                     if local_path.exists():
                         local_path.unlink()
-                        logger.debug(f"Deleted local file: {local_path}")
+                        logger.debug(f"Deleted local file after upload: {local_path}")
                 
                 logger.info(f"Uploaded and deleted {len(file_paths)} files")
                 self.pending_uploads.clear()
