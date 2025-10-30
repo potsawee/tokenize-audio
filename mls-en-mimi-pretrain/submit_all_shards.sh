@@ -9,7 +9,8 @@
 
 set -euo pipefail
 
-SHARD_FILES_LIST="file_lists/train_files.txt"
+# SHARD_FILES_LIST="file_lists/train_files.txt"
+SHARD_FILES_LIST="file_lists/pending_files.txt"
 MAX_CONCURRENT_JOBS="${1:-100}"  # Default to 100 if not specified
 CHECK_INTERVAL=30  # Seconds between queue checks
 
