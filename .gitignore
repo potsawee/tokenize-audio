@@ -1,42 +1,3 @@
-# Yodas2-Mimi processing directories
-yodas2-mimi/work/
-yodas2-mimi/output/
-yodas2-mimi/progress/
-yodas2-mimi/logs/
-yodas2-mimi/legacy/
-yodas2-mimi/submit/job_en006.sh
-yodas2-mimi/submit/sc_loprior_gpu.sh
-yodas2-mimi/submit_jobs.txt
-yodas2-mimi/yodas2-mm
-yodas2-mimi/*.log
-yodas2-mimi/*.json
-yodas2-mimi/testing
-
-examples/
-
-codec-bpe/yodas2_mimi_8cb*
-codec-bpe/data
-codec-bpe/output
-codec-bpe/trained_bpe_tokenizers
-codec-bpe/logs
-codec-bpe/notebooks
-codec-bpe/sample_progress.txt
-codec-bpe/subset_subshard_ids_for_bpe*.txt
-codec-bpe/legacy
-codec-bpe/saved
-
-pretraining-data/work/
-pretraining-data/output/
-pretraining-data/progress/
-pretraining-data/progress
-pretraining-data/logs/
-pretraining-data/logs_
-pretraining-data/notebooks/
-pretraining-data/huggingface_hub_cache/
-pretraining-data/stats/
-
-
-
 # Python
 __pycache__/
 *.py[cod]
@@ -65,3 +26,54 @@ Thumbs.db
 # Jupyter
 .ipynb_checkpoints/
 
+# Yodas2-Mimi processing directories
+yodas2-mimi/work/
+yodas2-mimi/output/
+yodas2-mimi/progress/
+yodas2-mimi/logs/
+yodas2-mimi/legacy/
+yodas2-mimi/submit/job_en006.sh
+yodas2-mimi/submit/sc_loprior_gpu.sh
+yodas2-mimi/submit_jobs.txt
+yodas2-mimi/yodas2-mm
+yodas2-mimi/*.log
+yodas2-mimi/*.json
+yodas2-mimi/testing
+
+examples/
+
+codec-bpe/yodas2_mimi_8cb*
+codec-bpe/data
+codec-bpe/output
+codec-bpe/trained_bpe_tokenizers
+codec-bpe/logs
+codec-bpe/notebooks
+codec-bpe/sample_progress.txt
+codec-bpe/subset_subshard_ids_for_bpe*.txt
+codec-bpe/legacy
+codec-bpe/saved
+
+# Yodas2-Mimi (raw) to pre-training format
+pretraining-data/work/
+pretraining-data/output/
+pretraining-data/progress/
+pretraining-data/progress
+pretraining-data/logs/
+pretraining-data/salt_logs
+pretraining-data/logs_
+pretraining-data/notebooks/
+pretraining-data/huggingface_hub_cache/
+pretraining-data/stats/
+pretraining-data/token_stats_by_language/
+pretraining-data/submit/job_estimate_tokens.sh
+pretraining-data/submit_8lang_estimate_tokens.sh
+pretraining-data/submit_all_estimate_tokens.sh
+
+# MLS-en
+mls-en-mimi-pretrain/mls-mm-pretrain
+mls-en-mimi-pretrain/file_lists/pending_files.txt
+mls-en-mimi-pretrain/stage2/list_of_batches*
+mls-en-mimi-pretrain/test.ipynb
+
+# LibriSpeech
+librispeech-mimi/tmp_parquets/
