@@ -77,3 +77,7 @@ mls-en-mimi-pretrain/test.ipynb
 
 # LibriSpeech
 librispeech-mimi/tmp_parquets/
+
+# Emilia
+emilia-mimi/emilia-mm-pretrain
+emilia-mimi/file_lists/*-shuffled.txt
