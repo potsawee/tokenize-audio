@@ -672,4 +672,15 @@ def main():
     
 if __name__ == "__main__":
     main()
+    # Emilia-EN
     # usage: python process_shard.py --split Emilia --shard-id EN-B000000 --hf-repo-id potsawee/emilia-mm-pretrain --work-dir /sphinx/u/salt-checkpoints/emilia-mm-pretrain/work --output-dir /sphinx/u/salt-checkpoints/emilia-mm-pretrain/output --progress-dir /sphinx/u/salt-checkpoints/emilia-mm-pretrain/progress --device cuda --batch-size 64
+
+    # Emilia-DE
+    # usage: python process_shard.py --split Emilia --shard-id DE-B000000 --hf-repo-id potsawee/emilia-mm-pretrain --work-dir /sphinx/u/salt-checkpoints/emilia-mm-pretrain/work-de --output-dir /sphinx/u/salt-checkpoints/emilia-mm-pretrain/output-de --progress-dir /sphinx/u/salt-checkpoints/emilia-mm-pretrain/progress-de --device cuda --batch-size 64
+
+    # Emilia-ZH
+    # usage: python process_shard.py --split Emilia --shard-id ZH-B000000 --hf-repo-id potsawee/emilia-mm-pretrain --work-dir /sphinx/u/salt-checkpoints/emilia-mm-pretrain/work-zh --output-dir /sphinx/u/salt-checkpoints/emilia-mm-pretrain/output-zh --progress-dir /sphinx/u/salt-checkpoints/emilia-mm-pretrain/progress-zh --device cuda --batch-size 64
+
+    # Emilia-YODAS-DE
+    # usage: python process_shard.py --split Emilia-YODAS --shard-id DE-B000000 --hf-repo-id potsawee/emilia-mm-pretrain --work-dir /sphinx/u/salt-checkpoints/emilia-mm-pretrain/work-yodas --output-dir /sphinx/u/salt-checkpoints/emilia-mm-pretrain/output-yodas --progress-dir /sphinx/u/salt-checkpoints/emilia-mm-pretrain/progress-yodas --device cuda --batch-size 64
+

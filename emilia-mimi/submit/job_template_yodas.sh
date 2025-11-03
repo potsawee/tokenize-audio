@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --account=nlp
 #SBATCH --partition=sc-loprio
-#SBATCH --job-name=emilia_shard
+#SBATCH --job-name=yodas_shard
 #SBATCH --time=14-00:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
@@ -9,8 +9,8 @@
 #SBATCH --mem=15G
 #SBATCH --gres=gpu:1
 #SBATCH --open-mode=append
-#SBATCH --output=/sphinx/u/salt-checkpoints/emilia-mm-pretrain/logs/default.log
-#SBATCH --error=/sphinx/u/salt-checkpoints/emilia-mm-pretrain/logs/default.log
+#SBATCH --output=/sphinx/u/salt-checkpoints/emilia-mm-pretrain/logs-yodas/default.log
+#SBATCH --error=/sphinx/u/salt-checkpoints/emilia-mm-pretrain/logs-yodas/default.log
 #SBATCH --constraint=[24G|40G|48G|80G]
 #SBATCH --exclude=tiger-hgx-1,cocoflops2,jagupard27,jagupard30,jagupard31,tiger5,tiger7,tiger8
 
@@ -20,8 +20,8 @@ SHARD_ID="${1:-}"
 
 if [ -z "$SHARD_ID" ]; then
     echo "Error: Shard ID not provided"
-    echo "Usage: sbatch submit/job_template.sh <shard_id>"
-    echo "Example: sbatch submit/job_template.sh EN-B000000"
+    echo "Usage: sbatch submit/job_template_yodas.sh <shard_id>"
+    echo "Example: sbatch submit/job_template_yodas.sh EN-B001361"
     exit 1
 fi
 
@@ -49,7 +49,7 @@ export PATH=$PATH:/u/nlp/bin:/usr/local/cuda
 export PYTHONPATH='.'
 
 # HuggingFace cache - use work directory for this job to avoid quota issues
-WORK_DIR="/sphinx/u/salt-checkpoints/emilia-mm-pretrain/work"
+WORK_DIR="/sphinx/u/salt-checkpoints/emilia-mm-pretrain/work-yodas"
 export HF_HOME="${WORK_DIR}/hf_cache"
 export HF_HUB_CACHE=$HF_HOME/hub
 export TRANSFORMERS_CACHE=$HF_HUB_CACHE
@@ -75,14 +75,15 @@ echo "Processing shard: ${SHARD_ID}"
 # Launch the processing script
 srun --unbuffered bash -lc \
 "python -u process_shard.py \
-    --split Emilia \
+    --split Emilia-YODAS \
     --shard-id ${SHARD_ID} \
-    --work-dir /sphinx/u/salt-checkpoints/emilia-mm-pretrain/work \
-    --output-dir /sphinx/u/salt-checkpoints/emilia-mm-pretrain/output \
-    --progress-dir /sphinx/u/salt-checkpoints/emilia-mm-pretrain/progress \
+    --work-dir /sphinx/u/salt-checkpoints/emilia-mm-pretrain/work-yodas \
+    --output-dir /sphinx/u/salt-checkpoints/emilia-mm-pretrain/output-yodas \
+    --progress-dir /sphinx/u/salt-checkpoints/emilia-mm-pretrain/progress-yodas \
     --hf-repo-id potsawee/emilia-mm-pretrain \
     --device cuda \
     --batch-size 16 \
     --cache-interval 512"
+
 
 
