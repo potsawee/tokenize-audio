@@ -193,8 +193,8 @@ def process_librispeech(data_path: str, hf_repo_id: str, split: str, chunk_size:
             audio_codes = audio_codes[:NUM_CODEBOOKS, :]
             audio_str = codes_to_chars(audio_codes, codebook_size=CODEBOOK_SIZE)
 
-            text_for_asr = f"<|audio_start|>{audio_str}<|audio_end|><|text_start|>{transcript}<|text_end|>"
-            text_for_tts = f"<|text_start|>{transcript}<|text_end|><|audio_start|>{audio_str}<|audio_end|>"
+            text_for_asr = f"<|begin_of_text|><|audio_start|>{audio_str}<|audio_end|><|text_start|>{transcript}<|text_end|><|end_of_text|>"
+            text_for_tts = f"<|begin_of_text|><|text_start|>{transcript}<|text_end|><|audio_start|>{audio_str}<|audio_end|><|end_of_text|>"
             
             # Add TTS sample with _type1 suffix
             combined_data.append({

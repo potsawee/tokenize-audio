@@ -61,3 +61,14 @@ huggingface-cli login
 huggingface-cli upload potsawee/marin-mimi-bpe-8cb-16k-tokenizer \
     /nlp/scr/potsawee/workspace/tokenize-audio/codec-bpe/trained_bpe_tokenizers/marin_mimi_bpe_8cb_16k \
     --repo-type model
+
+# For extending Qwen3 tokenizer
+python -m codec_bpe.extend_tokenizer \
+    --existing_tokenizer Qwen/Qwen3-0.6B-Base \
+    --codec_bpe_tokenizer ./trained_bpe_tokenizers/mimi_bpe_8cb_16k \
+    --additional_special_tokens "<|text_start|>" "<|text_end|>" "<|audio_start|>" "<|audio_end|>" \
+    --save_path ./trained_bpe_tokenizers/qwen3_mimi_bpe_8cb_16k
+
+huggingface-cli upload potsawee/qwen3-mimi-bpe-8cb-16k-tokenizer \
+    /nlp/scr/potsawee/workspace/tokenize-audio/codec-bpe/trained_bpe_tokenizers/qwen3_mimi_bpe_8cb_16k \
+    --repo-type model
