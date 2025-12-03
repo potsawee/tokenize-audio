@@ -80,4 +80,5 @@ librispeech-mimi/tmp_parquets/
 
 # Emilia
 emilia-mimi/emilia-mm-pretrain
+emilia-mimi/emilia-mm-conversational
 emilia-mimi/file_lists/*-shuffled.txt
