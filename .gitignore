@@ -39,6 +39,8 @@ yodas2-mimi/yodas2-mm
 yodas2-mimi/*.log
 yodas2-mimi/*.json
 yodas2-mimi/testing
+yodas2-mimi/logs_asr/
+yodas2-mimi/tmp/
 
 examples/
 

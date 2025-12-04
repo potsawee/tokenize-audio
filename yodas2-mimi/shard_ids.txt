@@ -4,6 +4,7 @@
 # Empty lines are also ignored
 
 # English
+en000
 en001
 en002
 en003
@@ -237,4 +238,3 @@ yi000
 yo000
 zh000
 zu000
-en000
