@@ -22,7 +22,7 @@ NUMERIC_ID=$(echo "$SHARD_ID" | grep -oP '\d+' | head -1 | sed 's/^0*//')
 JOB_NAME="y${LANG_CODE:0:1}_${NUMERIC_ID}"
 
 # Set log directory
-LOG_DIR="/sphinx/u/salt-checkpoints/emilia-mm-pretrain/logs-yodas"
+LOG_DIR="/sphinx/u/salt-checkpoints/emilia-mm-pretrain-fix/logs-yodas"
 LOG_FILE="${LOG_DIR}/${SHARD_ID}.log"
 
 # Create log directory if it doesn't exist
@@ -33,7 +33,7 @@ sbatch \
     --job-name="${JOB_NAME}" \
     --output="${LOG_FILE}" \
     --error="${LOG_FILE}" \
-    submit/job_template_yodas.sh "${SHARD_ID}"
+    submit/job_template_yodas_fix.sh "${SHARD_ID}"
 SBATCH_EXIT=$?
 
 if [ $SBATCH_EXIT -eq 0 ]; then
