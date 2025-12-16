@@ -1,0 +1,7 @@
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 1 -r 20G -c 8 -n cv0 -x jagupard[19-20,26-31,37] 'python process_common_voice.py --split-name en --shard-id-list shard_list/en0.txt --hf-repo-id potsawee/commonvoice17-mm-pretrain --output-dir /sphinx/u/salt-checkpoints/commonvoice17/output --cache-dir /sphinx/u/salt-checkpoints/commonvoice17/cache --batch-size 8' -o logs/en0.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 1 -r 20G -c 8 -n cv1 -x jagupard[19-20,26-31,37] 'python process_common_voice.py --split-name en --shard-id-list shard_list/en1.txt --hf-repo-id potsawee/commonvoice17-mm-pretrain --output-dir /sphinx/u/salt-checkpoints/commonvoice17/output --cache-dir /sphinx/u/salt-checkpoints/commonvoice17/cache --batch-size 4' -o logs/en1.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 1 -r 20G -c 8 -n libritts -x jagupard[19-20,26-31,37] 'python process_libritts_r.py --shard-id-list shard_list.txt --hf-repo-id potsawee/libritts-r-mm-pretrain --batch-size 8' -o libritts.log
+
+ 
