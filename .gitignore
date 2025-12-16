@@ -87,3 +87,6 @@ emilia-mimi/file_lists/*-shuffled.txt
 
 # CommonVoice17
 common-voice-mimi/logs/
+
+# PeoplesSpeech
+peoples-speech-mimi/logs/

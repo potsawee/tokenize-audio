@@ -1,0 +1,23 @@
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 1 -r 20G -c 8 -n clean0 -x jagupard[19-20,26-31,37] 'python process_peoples_speech.py --split-name clean --shard-id-list shard_list/clean0.txt --hf-repo-id potsawee/peoples-speech-mm-pretrain --output-dir /sphinx/u/salt-checkpoints/peoples-speech/output --cache-dir /sphinx/u/salt-checkpoints/peoples-speech/cache --batch-size 8' -o logs/clean0.log
+
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 1 -r 20G -c 8 -n clean2 -x jagupard[19-20,26-31,37] 'python process_peoples_speech.py --split-name clean --shard-id-list shard_list/clean2.txt --hf-repo-id potsawee/peoples-speech-mm-pretrain --output-dir /sphinx/u/salt-checkpoints/peoples-speech/output --cache-dir /sphinx/u/salt-checkpoints/peoples-speech/cache --batch-size 8' -o logs/clean2.log
+
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 1 -r 20G -c 8 -n clean4 -x jagupard[19-20,26-31,37] 'python process_peoples_speech.py --split-name clean --shard-id-list shard_list/clean4.txt --hf-repo-id potsawee/peoples-speech-mm-pretrain --output-dir /sphinx/u/salt-checkpoints/peoples-speech/output --cache-dir /sphinx/u/salt-checkpoints/peoples-speech/cache --batch-size 8' -o logs/clean4.log
+
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 1 -r 20G -c 8 -n clean6 -x jagupard[19-20,26-31,37] 'python process_peoples_speech.py --split-name clean --shard-id-list shard_list/clean6.txt --hf-repo-id potsawee/peoples-speech-mm-pretrain --output-dir /sphinx/u/salt-checkpoints/peoples-speech/output --cache-dir /sphinx/u/salt-checkpoints/peoples-speech/cache --batch-size 8' -o logs/clean6.log
+
+
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 1 -r 20G -c 8 -n csa_0 -x jagupard[19-20,26-31,37] 'python process_peoples_speech.py --split-name clean_sa --shard-id-list shard_list/clean_sa0.txt --hf-repo-id potsawee/peoples-speech-mm-pretrain --output-dir /sphinx/u/salt-checkpoints/peoples-speech/output --cache-dir /sphinx/u/salt-checkpoints/peoples-speech/cache --batch-size 8' -o logs/csa_0.log
+
+
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 1 -r 20G -c 8 -n clean1 -x jagupard[19-20,26-31,37] 'python process_peoples_speech.py --split-name clean --shard-id-list shard_list/clean1.txt --hf-repo-id potsawee/peoples-speech-mm-pretrain --output-dir /sphinx/u/salt-checkpoints/peoples-speech/output --cache-dir /sphinx/u/salt-checkpoints/peoples-speech/cache --batch-size 8' -o logs/clean1.log
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 1 -r 20G -c 8 -n clean3 -x jagupard[19-20,26-31,37] 'python process_peoples_speech.py --split-name clean --shard-id-list shard_list/clean3.txt --hf-repo-id potsawee/peoples-speech-mm-pretrain --output-dir /sphinx/u/salt-checkpoints/peoples-speech/output --cache-dir /sphinx/u/salt-checkpoints/peoples-speech/cache --batch-size 8' -o logs/clean3.log
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 1 -r 20G -c 8 -n clean5 -x jagupard[19-20,26-31,37] 'python process_peoples_speech.py --split-name clean --shard-id-list shard_list/clean5.txt --hf-repo-id potsawee/peoples-speech-mm-pretrain --output-dir /sphinx/u/salt-checkpoints/peoples-speech/output --cache-dir /sphinx/u/salt-checkpoints/peoples-speech/cache --batch-size 8' -o logs/clean5.log
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 1 -r 20G -c 8 -n clean7 -x jagupard[19-20,26-31,37] 'python process_peoples_speech.py --split-name clean --shard-id-list shard_list/clean7.txt --hf-repo-id potsawee/peoples-speech-mm-pretrain --output-dir /sphinx/u/salt-checkpoints/peoples-speech/output --cache-dir /sphinx/u/salt-checkpoints/peoples-speech/cache --batch-size 8' -o logs/clean7.log
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 1 -r 20G -c 8 -n clean8 -x jagupard[19-20,26-31,37] 'python process_peoples_speech.py --split-name clean --shard-id-list shard_list/clean8.txt --hf-repo-id potsawee/peoples-speech-mm-pretrain --output-dir /sphinx/u/salt-checkpoints/peoples-speech/output --cache-dir /sphinx/u/salt-checkpoints/peoples-speech/cache --batch-size 8' -o logs/clean8.log
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 1 -r 20G -c 8 -n csa_1 -x jagupard[19-20,26-31,37] 'python process_peoples_speech.py --split-name clean_sa --shard-id-list shard_list/clean_sa1.txt --hf-repo-id potsawee/peoples-speech-mm-pretrain --output-dir /sphinx/u/salt-checkpoints/peoples-speech/output --cache-dir /sphinx/u/salt-checkpoints/peoples-speech/cache --batch-size 8' -o logs/csa_1.log
