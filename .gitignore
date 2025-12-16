@@ -90,3 +90,6 @@ common-voice-mimi/logs/
 
 # PeoplesSpeech
 peoples-speech-mimi/logs/
+
+# LibriSpeech-R
+libritts-r-mimi/libritts.log
