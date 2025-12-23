@@ -1,0 +1,76 @@
+# semantic Yodas2-MM
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos000 'python build_yodas2_mm_semantic.py --shard-id en000 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos000.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos001 'python build_yodas2_mm_semantic.py --shard-id en001 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos001.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos002 'python build_yodas2_mm_semantic.py --shard-id en002 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos002.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos003 'python build_yodas2_mm_semantic.py --shard-id en003 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos003.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos004 'python build_yodas2_mm_semantic.py --shard-id en004 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos004.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos005 'python build_yodas2_mm_semantic.py --shard-id en005 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos005.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos006 'python build_yodas2_mm_semantic.py --shard-id en006 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos006.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos007 'python build_yodas2_mm_semantic.py --shard-id en007 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos007.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos100 'python build_yodas2_mm_semantic.py --shard-id en100 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos100.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos101 'python build_yodas2_mm_semantic.py --shard-id en101 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos101.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos102 'python build_yodas2_mm_semantic.py --shard-id en102 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos102.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos103 'python build_yodas2_mm_semantic.py --shard-id en103 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos103.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos104 'python build_yodas2_mm_semantic.py --shard-id en104 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos104.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos105 'python build_yodas2_mm_semantic.py --shard-id en105 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos105.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos106 'python build_yodas2_mm_semantic.py --shard-id en106 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos106.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos107 'python build_yodas2_mm_semantic.py --shard-id en107 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos107.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos108 'python build_yodas2_mm_semantic.py --shard-id en108 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos108.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos109 'python build_yodas2_mm_semantic.py --shard-id en109 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos109.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos110 'python build_yodas2_mm_semantic.py --shard-id en110 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos110.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos111 'python build_yodas2_mm_semantic.py --shard-id en111 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos111.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos112 'python build_yodas2_mm_semantic.py --shard-id en112 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos112.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos113 'python build_yodas2_mm_semantic.py --shard-id en113 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos113.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos114 'python build_yodas2_mm_semantic.py --shard-id en114 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos114.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos115 'python build_yodas2_mm_semantic.py --shard-id en115 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos115.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos116 'python build_yodas2_mm_semantic.py --shard-id en116 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos116.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos117 'python build_yodas2_mm_semantic.py --shard-id en117 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos117.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos118 'python build_yodas2_mm_semantic.py --shard-id en118 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos118.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos119 'python build_yodas2_mm_semantic.py --shard-id en119 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos119.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos120 'python build_yodas2_mm_semantic.py --shard-id en120 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos120.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos121 'python build_yodas2_mm_semantic.py --shard-id en121 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos121.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos122 'python build_yodas2_mm_semantic.py --shard-id en122 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos122.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos123 'python build_yodas2_mm_semantic.py --shard-id en123 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos123.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos124 'python build_yodas2_mm_semantic.py --shard-id en124 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos124.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos125 'python build_yodas2_mm_semantic.py --shard-id en125 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos125.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos126 'python build_yodas2_mm_semantic.py --shard-id en126 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos126.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos127 'python build_yodas2_mm_semantic.py --shard-id en127 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos127.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos128 'python build_yodas2_mm_semantic.py --shard-id en128 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos128.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yos129 'python build_yodas2_mm_semantic.py --shard-id en129 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-semantic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_semantic' -o logs_acoustic/semantic/yos129.log

@@ -1,0 +1,76 @@
+# acoustic Yodas2-MM
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa000 'python build_yodas2_mm_acoustic.py --shard-id en000 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa000.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa001 'python build_yodas2_mm_acoustic.py --shard-id en001 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa001.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa002 'python build_yodas2_mm_acoustic.py --shard-id en002 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa002.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa003 'python build_yodas2_mm_acoustic.py --shard-id en003 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa003.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa004 'python build_yodas2_mm_acoustic.py --shard-id en004 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa004.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa005 'python build_yodas2_mm_acoustic.py --shard-id en005 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa005.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa006 'python build_yodas2_mm_acoustic.py --shard-id en006 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa006.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa007 'python build_yodas2_mm_acoustic.py --shard-id en007 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa007.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa100 'python build_yodas2_mm_acoustic.py --shard-id en100 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa100.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa101 'python build_yodas2_mm_acoustic.py --shard-id en101 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa101.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa102 'python build_yodas2_mm_acoustic.py --shard-id en102 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa102.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa103 'python build_yodas2_mm_acoustic.py --shard-id en103 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa103.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa104 'python build_yodas2_mm_acoustic.py --shard-id en104 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa104.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa105 'python build_yodas2_mm_acoustic.py --shard-id en105 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa105.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa106 'python build_yodas2_mm_acoustic.py --shard-id en106 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa106.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa107 'python build_yodas2_mm_acoustic.py --shard-id en107 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa107.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa108 'python build_yodas2_mm_acoustic.py --shard-id en108 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa108.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa109 'python build_yodas2_mm_acoustic.py --shard-id en109 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa109.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa110 'python build_yodas2_mm_acoustic.py --shard-id en110 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa110.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa111 'python build_yodas2_mm_acoustic.py --shard-id en111 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa111.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa112 'python build_yodas2_mm_acoustic.py --shard-id en112 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa112.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa113 'python build_yodas2_mm_acoustic.py --shard-id en113 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa113.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa114 'python build_yodas2_mm_acoustic.py --shard-id en114 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa114.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa115 'python build_yodas2_mm_acoustic.py --shard-id en115 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa115.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa116 'python build_yodas2_mm_acoustic.py --shard-id en116 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa116.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa117 'python build_yodas2_mm_acoustic.py --shard-id en117 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa117.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa118 'python build_yodas2_mm_acoustic.py --shard-id en118 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa118.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa119 'python build_yodas2_mm_acoustic.py --shard-id en119 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa119.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa120 'python build_yodas2_mm_acoustic.py --shard-id en120 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa120.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa121 'python build_yodas2_mm_acoustic.py --shard-id en121 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa121.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa122 'python build_yodas2_mm_acoustic.py --shard-id en122 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa122.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa123 'python build_yodas2_mm_acoustic.py --shard-id en123 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa123.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa124 'python build_yodas2_mm_acoustic.py --shard-id en124 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa124.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa125 'python build_yodas2_mm_acoustic.py --shard-id en125 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa125.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa126 'python build_yodas2_mm_acoustic.py --shard-id en126 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa126.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa127 'python build_yodas2_mm_acoustic.py --shard-id en127 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa127.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa128 'python build_yodas2_mm_acoustic.py --shard-id en128 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa128.log
+
+SLURM_CPU_BIND=none nlprun -q jag -p standard -g 0 -r 30G -c 4 -n yoa129 'python build_yodas2_mm_acoustic.py --shard-id en129 --source-repo potsawee/yodas2-mm-pretrain --target-repo potsawee/yodas2-mm-acoustic --work-dir /sphinx/u/salt-checkpoints/yodas2-mm-acoustic/work_acoustic' -o logs_acoustic/acoustic/yoa129.log
