@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 # All available languages in the dataset
 LANGUAGES = [
-    "ar", "cy", "de", "es", "et", "fa", "fr", "id", "it", "ja",
+    "ar", "ca","cy", "de", "es", "et", "fa", "fr", "id", "it", "ja",
     "lv", "mn", "nl", "pt", "ru", "sl", "sv-SE", "ta", "tr", "zh-CN"
 ]
 
@@ -42,7 +42,12 @@ def load_language_split(lang: str, split: str) -> pd.DataFrame:
         DataFrame with the loaded data
     """
     logger.info(f"Loading {lang}/{split}...")
-    dataset = load_dataset(SOURCE_REPO, data_dir=lang, split=split)
+    dataset = load_dataset(
+        SOURCE_REPO, 
+        data_dir=lang,
+        split=split,
+        download_mode="force_redownload"
+    )
     df = dataset.to_pandas()
     # Add language column for reference
     df["lang"] = lang
@@ -178,3 +183,4 @@ if __name__ == "__main__":
     main()
     # Example usage:
     # python combine_cvss_mimi.py --hf-repo-id potsawee/cvss-mm-method1 --method method1 
+    # python combine_cvss_mimi.py --hf-repo-id potsawee/cvss-mm-method1.1 --method method1 # v1.1 just add missing 'ca'  
